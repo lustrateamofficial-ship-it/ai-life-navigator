@@ -1,0 +1,75 @@
+# CI: проверяет, что backend и frontend хотя бы компилируются и проходят юнит-тесты,
+# ПЕРЕД тем, как что-то попадёт в основную ветку или будет задеплоено. Не заменяет
+# ручную проверку Definition of Done (раздел 50 ТЗ) — только ловит очевидные
+# регрессии (синтаксис, типы, упавшие тесты, незапускающаяся сборка) автоматически.
+#
+# Намеренно НЕ поднимает Postgres и не требует реальных AI/Telegram-ключей: юнит-тесты
+# (src/__tests__/**) написаны как чистые функции без обращения к базе (см. комментарии
+# в самих тестах — там же объяснено, что полноценный восстановление-из-бэкапа round-trip
+# тест требует реальной БД и в этот набор сознательно не включён).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # "npm install", а не "npm ci": в репозитории пока нет package-lock.json (он
+      # появится сам при первом "npm install" у вас или здесь, в CI) — как только он
+      # будет закоммичен, можно переключиться на "npm ci" для полностью
+      # детерминированных сборок и включить кэш зависимостей (cache: "npm" у
+      # actions/setup-node) — сейчас он не настроен ровно по той же причине.
+      - name: Install dependencies
+        run: npm install
+
+      # prisma generate не требует подключения к реальной базе — только читает schema.prisma
+      # и генерирует типизированный клиент, который импортируют и сами тесты, и tsc.
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Type-check
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build (compile to dist/)
+        run: npm run build
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      # "npm run build" здесь = "tsc && vite build" (см. frontend/package.json) — то есть
+      # type-check и продакшен-сборка одной командой, как и в реальном Dockerfile.
+      - name: Type-check and build
+        run: npm run build
+        env:
+          # Build-time переменная Vite (см. frontend/Dockerfile) — значение не важно для
+          # CI, сборка просто должна успешно завершиться с каким-то значением.
+          VITE_API_URL: "https://ci-placeholder.example.com/api"

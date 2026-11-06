@@ -1,0 +1,595 @@
+// AI Life Navigator — Database Schema
+// Соответствует разделу 45 ТЗ. PostgreSQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// CORE
+// ─────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+  telegramId    BigInt   @unique
+  username      String?
+  firstName     String?
+  lastName      String?
+  languageCode  String?
+  timezone      String   @default("UTC")
+  // Пока не null — вечерний check-in не отправляется (пользователь попросил не беспокоить).
+  // Используется в scheduler.ts, чтобы не повторять один и тот же вопрос, если человек
+  // уже два дня подряд не отвечает.
+  checkinSnoozedUntil DateTime?
+  // Google Drive (резервные копии, раздел "Настройки"): refresh token из OAuth-потока.
+  // Ограниченный scope drive.file — приложение видит только файлы, которые само создало,
+  // не весь диск пользователя. Храним только refresh token — access token каждый раз
+  // получается заново (живёт ~1 час), долгосрочно хранить его незачем.
+  googleDriveRefreshToken String?
+  googleDriveFolderId     String? // id папки "Навигатор Жизни — бэкапы", создаётся при первом подключении
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  profile          Profile?
+  mission          Mission?
+  goals            Goal[]
+  tasks            Task[]
+  habits           Habit[]
+  weightLogs       WeightLog[]
+  foodLogs         FoodLog[]
+  financialAccounts FinancialAccount[]
+  transactions     FinancialTransaction[]
+  debts            Debt[]
+  savingsGoals     SavingsGoal[]
+  calendarEvents   CalendarEvent[]
+  reminders        Reminder[]
+  ideas            Idea[]
+  memoryItems      MemoryItem[]
+  journalEntries   JournalEntry[]
+  selfPortraits    SelfPortrait[]
+  dailyCheckins    DailyCheckin[]
+  dailySummaries   DailySummary[]
+  weeklyReviews    WeeklyReview[]
+  monthlyReviews   MonthlyReview[]
+  aiInsights       AiInsight[]
+  aiAlerts         AiAlert[]
+  directionScores  DirectionScore[]
+  detectedTrends   DetectedTrend[]
+  correlations     Correlation[]
+}
+
+model Profile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightGoalKg Float?
+  dailyCalorieTarget Int?
+  proteinTargetG Int?
+  fatTargetG     Int?
+  carbTargetG    Int?
+  city         String?
+  onboardingDone Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// MISSION / GOALS / STAGES / TASKS
+// ─────────────────────────────────────────────
+
+model Mission {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  desiredLife       String?
+  whatToAchieve     String?
+  whyImportant      String?
+  whatToAvoid       String?
+  whoToBecome       String?
+  successDefinition String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+enum GoalStatus {
+  active
+  completed
+  paused
+  abandoned
+}
+
+model Goal {
+  id          String     @id @default(uuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  reason      String?
+  deadline    DateTime?
+  status      GoalStatus @default(active)
+  progress    Int        @default(0) // 0-100
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  stages GoalStage[]
+  tasks  Task[]
+}
+
+enum StageStatus {
+  completed
+  active
+  planned
+  blocked
+  overdue
+}
+
+model GoalStage {
+  id          String      @id @default(uuid())
+  goalId      String
+  goal        Goal        @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      StageStatus @default(planned)
+  deadline    DateTime?
+  order       Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  tasks Task[]
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+  postponed
+  cancelled
+}
+
+model Task {
+  id                 String       @id @default(uuid())
+  userId             String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId             String?
+  goal               Goal?        @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  stageId            String?
+  stage              GoalStage?   @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  title              String
+  description        String?
+  priority           TaskPriority @default(medium)
+  deadline           DateTime?
+  estimatedDurationMin Int?
+  status             TaskStatus   @default(todo)
+  scheduledTime      DateTime?
+  completedAt        DateTime?
+  // Повтор: после выполнения создаётся следующая задача. null — не повторяется.
+  recurrence         String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// HABITS
+// ─────────────────────────────────────────────
+
+enum HabitStatus {
+  in_bank
+  active
+  completed
+  abandoned
+}
+
+model Habit {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  targetDays  Int         @default(30)
+  status      HabitStatus @default(in_bank)
+  streak      Int         @default(0)
+  startedAt   DateTime?
+  completedAt DateTime?
+  reminderTime String?    // "HH:MM"
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  logs HabitLog[]
+}
+
+model HabitLog {
+  id        String   @id @default(uuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  completed Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([habitId, date])
+}
+
+// ─────────────────────────────────────────────
+// HEALTH
+// ─────────────────────────────────────────────
+
+model WeightLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  weightKg  Float
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model FoodItem {
+  id       String @id @default(uuid())
+  name     String
+  caloriesPer100g Float
+  proteinPer100g  Float
+  fatPer100g      Float
+  carbsPer100g    Float
+
+  foodLogEntries FoodLogEntry[]
+}
+
+model FoodLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  rawInput  String?  // исходное сообщение пользователя
+  createdAt DateTime @default(now())
+
+  entries FoodLogEntry[]
+}
+
+model FoodLogEntry {
+  id         String   @id @default(uuid())
+  foodLogId  String
+  foodLog    FoodLog  @relation(fields: [foodLogId], references: [id], onDelete: Cascade)
+  foodItemId String?
+  foodItem   FoodItem? @relation(fields: [foodItemId], references: [id])
+  nameOverride String?
+  grams      Float
+  calories   Float
+  proteinG   Float
+  fatG       Float
+  carbsG     Float
+}
+
+// ─────────────────────────────────────────────
+// FINANCE
+// ─────────────────────────────────────────────
+
+enum AccountType {
+  cash
+  bank
+  savings
+  investment
+}
+
+model FinancialAccount {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  type      AccountType @default(bank)
+  currency  String      @default("USD")
+  balance   Float       @default(0)
+  createdAt DateTime    @default(now())
+
+  transactions FinancialTransaction[]
+}
+
+enum TransactionType {
+  income
+  expense
+}
+
+model FinancialTransaction {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String?
+  account   FinancialAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  type      TransactionType
+  amount    Float
+  category  String
+  comment   String?
+  date      DateTime        @db.Date
+  createdAt DateTime        @default(now())
+}
+
+model Debt {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  totalAmount  Float
+  remainingAmount Float
+  dueDate      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SavingsGoal {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  deadline      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// CALENDAR / REMINDERS
+// ─────────────────────────────────────────────
+
+enum EventCategory {
+  work
+  training
+  meeting
+  personal
+  sleep
+  free_time
+}
+
+model CalendarEvent {
+  id         String        @id @default(uuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  category   EventCategory @default(personal)
+  startTime  DateTime
+  endTime    DateTime
+  recurrenceRule String?   // RRULE string, null = one-off
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+enum ReminderRecurrence {
+  once
+  daily
+  weekly
+  monthly
+}
+
+model Reminder {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  triggerAt   DateTime
+  recurrence  ReminderRecurrence @default(once)
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// IDEAS
+// ─────────────────────────────────────────────
+
+model Idea {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  linkedGoalId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// AI MEMORY
+// ─────────────────────────────────────────────
+
+enum MemoryType {
+  fact
+  goal_context
+  history
+  observation
+  principle // раздел "Дневник": устойчивое личное правило/качество, извлечённое из записи дневника —
+            // в отличие от остальных типов, principle всегда попадает в контекст AI, а не только по семантическому поиску.
+}
+
+model MemoryItem {
+  id        String     @id @default(uuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      MemoryType
+  content   String
+  sourceJournalEntryId String?       // если факт/принцип извлечён из записи дневника — ссылка на неё
+  sourceJournalEntry   JournalEntry? @relation(fields: [sourceJournalEntryId], references: [id], onDelete: SetNull)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  embedding MemoryEmbedding?
+}
+
+// Дневник: свободные записи мыслей пользователя — то, к каким качествам он стремится
+// и от чего хочет отталкиваться дальше. AI (при наличии ключа) извлекает из записи
+// устойчивые принципы и сохраняет их как MemoryItem(type=principle).
+model JournalEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  // Личная запись: не отправляется ни в какие внешние AI-сервисы (принципы, разбор, портрет).
+  isPrivate Boolean  @default(false)
+  createdAt DateTime @default(now())
+  // Предложения бота («добавить задачу, расход…»), ждущие нажатия кнопки. Живут 30 минут и стираются
+  // после нажатия; хранятся в базе, чтобы перезапуск сервера их не терял.
+  pendingProposals  Json?
+  pendingExpiresAt  DateTime?
+
+  extractedPrinciples MemoryItem[]
+}
+
+// Портрет по дневнику: периодический анализ записей дневника + миссии + целей +
+// принципов, который AI (слой [3] — verifier/синтез) собирает в отражение того,
+// какие паттерны видны в том, что человек сам о себе написал. НЕ клинический диагноз
+// и не "цифровой клон" — это явно сформулированное наблюдение с опорой на текст,
+// с осторожными формулировками там, где модель не уверена.
+model SelfPortrait {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   Json     // { patterns: string[], statedPrinciples: string[], goalAlignment: string, advisorVoice: string }
+  createdAt DateTime @default(now())
+}
+
+// Векторное представление хранится отдельно, чтобы Structured Memory
+// не зависела от наличия vector extension в БД (pgvector опционален).
+model MemoryEmbedding {
+  id           String     @id @default(uuid())
+  memoryItemId String     @unique
+  memoryItem   MemoryItem @relation(fields: [memoryItemId], references: [id], onDelete: Cascade)
+  vector       Float[]    // требует pgvector для эффективного поиска в проде
+  model        String
+  createdAt    DateTime   @default(now())
+}
+
+// ─────────────────────────────────────────────
+// CHECK-INS / SUMMARIES / REVIEWS
+// ─────────────────────────────────────────────
+
+enum DayRating {
+  good
+  normal
+  bad
+  skipped
+}
+
+model DailyCheckin {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       DateTime  @db.Date
+  rating     DayRating?
+  freeText   String?
+  aiSummary  String?
+  createdAt  DateTime  @default(now())
+
+  @@unique([userId, date])
+}
+
+model DailySummary {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            DateTime @db.Date
+  tasksCompleted  Int      @default(0)
+  tasksTotal      Int      @default(0)
+  caloriesConsumed Float?
+  directionScore  Int?
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model WeeklyReview {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart   DateTime @db.Date
+  content     Json     // структурированный отчёт (раздел 34 ТЗ)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, weekStart])
+}
+
+model MonthlyReview {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthStart  DateTime @db.Date
+  content     Json     // структурированный отчёт (раздел 35 ТЗ)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, monthStart])
+}
+
+// ─────────────────────────────────────────────
+// AI ANALYTICS
+// ─────────────────────────────────────────────
+
+enum InsightSeverity {
+  info
+  warning
+  critical
+}
+
+model AiInsight {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String          // "drift", "trend", "correlation", "next_action" ...
+  content   String
+  severity  InsightSeverity @default(info)
+  createdAt DateTime        @default(now())
+}
+
+model AiAlert {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model DirectionScore {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  overall     Int      // 0-100
+  goalsScore  Int
+  healthScore Int
+  financeScore Int
+  habitsScore Int
+  timeScore   Int
+  explanation String?
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model DetectedTrend {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metric      String   // "main_goal_progress", "finance", "health" ...
+  direction   String   // "up" | "down" | "flat"
+  periodDays  Int
+  createdAt   DateTime @default(now())
+}
+
+model Correlation {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metricA        String
+  metricB        String
+  strength       Float    // -1..1
+  observations   Int      // сколько точек данных легло в основу
+  description    String   // человеко-читаемое, без причинности (раздел 23)
+  createdAt      DateTime @default(now())
+}

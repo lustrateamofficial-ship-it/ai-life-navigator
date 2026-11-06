@@ -1,0 +1,29 @@
+{
+  "name": "navigator-zhizni-phone",
+  "version": "1.21.0",
+  "private": true,
+  "description": "Навигатор Жизни: приложение на телефон (данные хранятся на устройстве)",
+  "scripts": {
+    "parse-schema": "node tools/parse-schema.mjs",
+    "build": "node tools/parse-schema.mjs && node build.mjs",
+    "android-prepare": "node tools/android-prepare.cjs",
+    "test:ui": "node tests/ui-flow.cjs && node tests/daily.cjs && node tests/journal-ai-backup.cjs && node tests/android-plugins.cjs && node tests/onboarding-and-encryption.cjs && node tests/week-and-evening.cjs && node tests/edit-delete.cjs && node tests/task-deadline.cjs && node tests/earlier.cjs && node tests/robustness.cjs && node tests/scale-and-integrity.cjs && node tests/new-features.cjs && node tests/audit-ui.cjs && node tests/concurrency.cjs && node tests/contrast.cjs && node tests/setup-card.cjs && node tests/claude-primary.cjs && node tests/ai-router.cjs && node tests/secrets.cjs && node tests/bad-settings.cjs && node tests/deep-qa.cjs && node tests/time-and-forms.cjs && node tests/roundtrip.cjs && node tests/update-safety.cjs && node tests/update-flow.cjs && node tests/final-qa.cjs && node tests/features-2.cjs && node tests/features-edge.cjs && node tests/evening-skip.cjs && node tests/features-3.cjs && node tests/offline.cjs"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "scheduler": "0.27.0",
+    "zod": "3.25.76",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/local-notifications": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/share": "^7.0.0",
+    "@aparajita/capacitor-biometric-auth": "^9.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "sharp": "^0.34.0",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

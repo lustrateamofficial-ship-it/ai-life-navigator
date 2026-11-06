@@ -1,0 +1,40 @@
+const { chromium } = require("playwright");
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 390, height: 780 }, serviceWorkers: "block" });
+  await ctx.addInitScript(() => { localStorage.setItem("navigator-debug", "1"); localStorage.setItem("navigator-settings", JSON.stringify({ geminiApiKey: "test" })); });
+  const p = await ctx.newPage();
+  const errs = []; const reqs = [];
+  p.on("pageerror", e => errs.push("PAGEERROR " + e.message));
+  p.on("console", m => { if (m.type() === "error") errs.push(m.text().slice(0, 300)); });
+  await ctx.route("**/generativelanguage.googleapis.com/**", async (route) => {
+    reqs.push(route.request().url().slice(0, 90));
+    const out = { tasks: [{ title: "Купить молоко", deadline: null }], reminders: [], ideas: [], transactions: [{ type: "expense", amount: 500, category: "Продукты", comment: null }], weight: { weightKg: 80 }, food: [] };
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(out) }] } }] }) });
+  });
+  await p.goto("http://localhost:8099/"); await p.waitForTimeout(800);
+  const call = (m, path, body) => p.evaluate(async ([m, path, body]) => { try { const r = await window.__api(m, path, body); return { s: r.status, body: r.body instanceof Uint8Array ? Array.from(r.body) : r.body }; } catch (e) { return { s: "EXC", body: String(e.stack || e).slice(0, 400) }; } }, [m, path, body]);
+  const j = await call("POST", "/journal", { content: "Надо купить молоко, потратил 500 на продукты, вес 80.", private: false });
+  console.log("journal", j.s);
+  const a = await call("POST", `/journal/${j.body.id}/analyze`);
+  console.log("analyze", a.s, JSON.stringify(a.body).slice(0, 400));
+  const pr = a.body.proposals || {};
+  const ap = await call("POST", `/journal/${j.body.id}/apply`, { tasks: pr.tasks || [], reminders: pr.reminders || [], ideas: pr.ideas || [], transactions: pr.transactions || [], weight: pr.weight || null, food: pr.food || [] });
+  console.log("apply", ap.s, JSON.stringify(ap.body).slice(0, 300));
+  console.log("tasks", JSON.stringify((await call("GET", "/tasks")).body).slice(0, 120));
+  console.log("dash", JSON.stringify((await call("GET", "/finance/dashboard")).body));
+  // экспорт и восстановление
+  const ex = await call("GET", "/account/export");
+  const text = Buffer.from(ex.body).toString("utf8");
+  console.log("export size", text.length, "head", text.slice(0, 80).replace(/\n/g, " "));
+  await call("POST", "/journal", { content: "лишняя запись", private: true });
+  const parsed = JSON.parse(text);
+  const rs = await call("POST", "/account/restore", parsed);
+  console.log("restore", rs.s, JSON.stringify(rs.body).slice(0, 300));
+  const jl = await call("GET", "/journal");
+  console.log("journal entries after restore", jl.body.entries.length);
+  console.log("tasks after restore", (await call("GET", "/tasks")).body.length);
+  console.log("AI requests", reqs.length);
+  console.log("ERRORS", errs);
+  await b.close();
+})();

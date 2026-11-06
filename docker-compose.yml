@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_life_navigator
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # БАГ (найден при независимом аудите): README предлагал гибридный сценарий для
+    # локальной разработки — "docker compose up -d db" + backend напрямую на хосте — но
+    # порт был закрыт полностью, так что DATABASE_URL с хостом "db" не резолвился бы вне
+    # docker-сети. Публиковать порт наружу (0.0.0.0) было бы реальной дырой на боевом
+    # сервере — но "127.0.0.1:5432" открывает порт ТОЛЬКО для процессов на этой же
+    # машине, снаружи он по-прежнему недоступен ни при каком состоянии firewall.
+    # Безопасность продакшена не страдает, а локальный сценарий из README снова работает.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    # Бинд-монтов исходников больше нет: backend/Dockerfile теперь собирает
+    # production-образ в два этапа (компилирует TypeScript внутри образа, кладёт
+    # только dist/ и production-зависимости) — то, что запускается в контейнере,
+    # это именно то, что было собрано, а не живые файлы с хоста. Чтобы применить
+    # изменения кода, образ нужно пересобрать: "docker compose up -d --build backend".
+    #
+    # БАГ (найден двумя независимыми аудитами подряд, критичный для первого деплоя):
+    # "prisma migrate deploy" применяет только УЖЕ СУЩЕСТВУЮЩИЕ файлы миграций — сам их
+    # не создаёт. В этом репозитории папки prisma/migrations никогда не было (её
+    # невозможно сгенерировать без интерактивного запуска "migrate dev" с реальной базой,
+    # которой здесь при разработке не было). На чистом сервере "migrate deploy" отработал
+    # бы "успешно", не создав ни одной таблицы — вся база осталась бы пустой, и первый
+    # же запрос к API упал бы. "db push" синхронизирует схему с базой напрямую, без
+    # файлов миграций — правильный инструмент для одного окружения без истории версий
+    # схемы (ваш случай). Выполняется автоматически при каждом старте контейнера, см.
+    # backend/entrypoint.sh.
+
+  frontend:
+    # VITE_API_URL должен быть передан именно как build-arg: переменные Vite
+    # встраиваются в JS во время сборки, а не читаются во время работы контейнера
+    # (см. комментарий в frontend/Dockerfile и в .env.example).
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    # frontend — статические файлы на nginx, никаких своих секретов/окружения ему
+    # в рантайме не нужно, поэтому env_file здесь не требуется.
+
+  # Caddy — реверс-прокси, который сам получает и продлевает бесплатный
+  # HTTPS-сертификат (Let's Encrypt). Единственный сервис, у которого
+  # открыты порты наружу.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:

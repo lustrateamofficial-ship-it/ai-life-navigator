@@ -1,0 +1,18 @@
+# Caddy сам получает и обновляет HTTPS-сертификат от Let's Encrypt —
+# ничего вручную настраивать не нужно, только вписать свой домен ниже.
+#
+# Замените "your-domain.com" на ваш реальный домен (или поддомен).
+# Backend отдаём на /api/*, всё остальное — фронтенду.
+
+your-domain.com {
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy backend:4000
+	}
+
+	handle {
+		# frontend теперь собранный production-билд на nginx (порт 80), а не
+		# dev-сервер Vite (порт 5173) — см. frontend/Dockerfile и docker-compose.yml.
+		reverse_proxy frontend:80
+	}
+}

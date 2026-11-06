@@ -1,0 +1,7 @@
+{
+  "appId": "app.navigator.zhizni",
+  "appName": "Навигатор Жизни",
+  "webDir": "dist",
+  "android": { "allowMixedContent": false },
+  "plugins": { "CapacitorHttp": { "enabled": true } }
+}

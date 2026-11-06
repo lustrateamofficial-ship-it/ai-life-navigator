@@ -1,0 +1,21 @@
+const { chromium } = require("playwright");
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 390, height: 800 }, serviceWorkers: "block" });
+  await ctx.addInitScript(() => localStorage.setItem("navigator-debug", "1"));
+  const p = await ctx.newPage(); const errs = []; p.on("pageerror", e => errs.push(e.message));
+  const txt = async () => (await p.innerText("body")).replace(/\n+/g, " | ");
+  await p.goto("http://localhost:8099/"); await p.waitForTimeout(600);
+  await p.evaluate(() => window.__api("PUT", "/profile", { onboardingDone: true }));
+  await p.goto("http://localhost:8099/#/tasks"); await p.reload(); await p.waitForTimeout(800);
+  const tomorrow = new Date(Date.now() + 86400e3).toLocaleDateString("sv-SE");
+  await p.getByLabel("Новая задача").fill("Сдать отчёт");
+  await p.locator("#task-date").fill(tomorrow);
+  await p.getByRole("button", { name: "Добавить" }).click(); await p.waitForTimeout(700);
+  console.log("не в «Сегодня»:", !(await txt()).includes("Сдать отчёт"));
+  await p.getByRole("button", { name: "Завтра" }).click(); await p.waitForTimeout(700);
+  console.log("в «Завтра» со сроком:", (await txt()).includes("Сдать отчёт") && /до \d+ /.test(await txt()));
+  console.log("поле даты очищено:", (await p.locator("#task-date").inputValue()) === "");
+  console.log("ERRORS", errs);
+  await b.close();
+})();
