@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createSnapshot, deleteSnapshot, listSnapshots, restoreSnapshot, type SnapshotInfo } from "../../shim/safety";
+import { createSnapshot, deleteSnapshot, listSnapshots, restoreSnapshot, type SnapshotInfo } from "../../phone/safety";
 
 const KIND: Record<string, string> = {
   update: "Перед обновлением",

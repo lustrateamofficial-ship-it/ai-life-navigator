@@ -31,6 +31,7 @@ const { chromium } = require("playwright");
   await p.waitForTimeout(500);
   console.log(JSON.stringify(await p.evaluate(() => window.__log)).slice(0, 700));
   await p.goto("http://localhost:8099/#/settings"); await p.reload(); await p.waitForTimeout(800);
+  await p.evaluate(() => document.querySelectorAll("details.fold").forEach((d) => { d.open = true; })); await p.waitForTimeout(200);
   await p.getByText("Сохранить копию в облако").click(); await p.waitForTimeout(600);
   const t = await p.innerText("body");
   console.log("log tail", JSON.stringify((await p.evaluate(() => window.__log)).slice(-2)));

@@ -1,3 +1,5 @@
+import { startIntro } from "../../phone/intro";
+import { Logo } from "../components/Logo";
 import { useState } from "react";
 import { api } from "../api/client";
 import { hapticNotification } from "../platform/sdk";
@@ -22,6 +24,7 @@ export function Onboarding({ onDone }: Props) {
     try {
       await api.put("/profile", { onboardingDone: true });
       hapticNotification("success");
+      startIntro();
       onDone();
     } catch {
       setError("Не получилось сохранить. Закрой приложение и открой снова.");
@@ -33,6 +36,7 @@ export function Onboarding({ onDone }: Props) {
   return (
     <div className="screen">
       <header className="page-header">
+        <Logo size={52} />
         <h2>Навигатор Жизни</h2>
         <p>Дневник, из которого вырастают задачи, цели и учёт.</p>
       </header>

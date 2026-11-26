@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { readAppearance, type Appearance } from "../shim/appearance";
+import { readAppearance, type Appearance } from "../phone/appearance";
 
 // Подписка на настройки внешнего вида: экраны перерисовываются сразу после переключения.
 export function useAppearance(): Appearance {

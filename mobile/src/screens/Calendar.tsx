@@ -39,7 +39,7 @@ function toDatetimeLocal(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function Calendar() {
+export function Calendar({ embedded = false }: { embedded?: boolean } = {}) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -142,14 +142,18 @@ export function Calendar() {
   }, {});
 
   return (
-    <div className="screen">
-      <Link className="back-link" to="/me">
-        ← Я
-      </Link>
-      <header className="page-header">
-        <h2>Расписание</h2>
-        <p>Ближайшие семь дней</p>
-      </header>
+    <div className={embedded ? undefined : "screen"}>
+      {!embedded && (
+        <>
+          <Link className="back-link" to="/plans">
+            ← Планы
+          </Link>
+          <header className="page-header">
+            <h2>Расписание</h2>
+            <p>Ближайшие семь дней</p>
+          </header>
+        </>
+      )}
 
       {warning && (
         <div className="card notice" role="status">

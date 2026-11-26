@@ -10,7 +10,7 @@ import { prisma } from "../../db/prisma.js";
 import { normalizeProposals, EMPTY_PROPOSALS, type JournalProposals } from "../journalExtraction.js";
 
 // Раздел 36: единый AI Orchestrator, а не набор независимых чатов.
-// Ниже — под-модули как отдельные функции. AI НЕ считает баланс/проценты/калории/
+// Ниже — под-модули как отдельные функции. AI НЕ считает баланс/проценты/
 // количество задач сам — эти цифры вычисляются кодом и передаются AI как готовый контекст.
 //
 // Трёхслойная система (см. services/ai/textGeneration.ts):
@@ -46,31 +46,6 @@ function requireAnthropic() {
 function requireAnyAi() {
   if (!isAnyAiConfigured()) {
     throw Object.assign(new Error("AI temporarily unavailable"), { code: "AI_NOT_CONFIGURED" });
-  }
-}
-
-// ── [2] Специалист: распознавание еды из текста (раздел 15) ──
-export async function parseFoodText(
-  text: string
-): Promise<Array<{ name: string; grams: number; calories: number; proteinG: number; fatG: number; carbsG: number }>> {
-  const fallback = [{ name: text, grams: 0, calories: 0, proteinG: 0, fatG: 0, carbsG: 0 }];
-
-  if (!isAnyAiConfigured()) {
-    // Без AI-ключа — не блокируем пользователя, возвращаем одну позицию как есть,
-    // с нулевым БЖУ, чтобы он мог поправить вручную (раздел 41: пользователь всегда может исправить).
-    return fallback;
-  }
-
-  try {
-    return await generateRouterOrSpecialistJson({
-      system:
-        "Ты распознаёшь продукты питания из свободного текста и оцениваешь их пищевую ценность. " +
-        'Отвечай JSON-массивом объектов: [{"name": string, "grams": number, "calories": number, "proteinG": number, "fatG": number, "carbsG": number}]',
-      prompt: text,
-    });
-  } catch (err) {
-    console.error("[orchestrator] parseFoodText failed, falling back to raw entry:", err);
-    return fallback;
   }
 }
 
@@ -244,13 +219,11 @@ export async function proposeFromJournal(text: string, timezone: string): Promis
         '"reminders":[{"title":string,"triggerAt":string}],' +
         '"ideas":[{"content":string}],' +
         '"transactions":[{"type":"income"|"expense","amount":number,"category":string,"comment":string|null}],' +
-        '"weight":{"weightKg":number}|null,' +
-        '"food":[{"rawInput":string}]}\n' +
+        '"weight":{"weightKg":number}|null}\n' +
         "tasks — дела, которые человек собирается сделать. reminders — только если названо конкретное время " +
         "(«напомни завтра в 19:00»), иначе это задача. ideas — идеи, которые стоит сохранить. " +
         "transactions — суммы, которые человек потратил или получил; category одним-двумя словами по-русски. " +
-        "weight — только если человек назвал свой вес сегодня. food — что человек съел сегодня, " +
-        "переписанное как есть. Все тексты на русском.",
+        "weight — только если человек назвал свой вес сегодня. Все тексты на русском.",
       prompt: text,
     });
     return normalizeProposals(raw, timezone);

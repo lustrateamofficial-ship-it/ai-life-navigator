@@ -1,3 +1,5 @@
+import { toast } from "../../phone/feedback";
+import { SwipeRow } from "../components/SwipeRow";
 import { confirmDelete } from "../utils/format";
 import { IconClose, IconEdit } from "../components/Icons";
 import { useEffect, useState } from "react";
@@ -21,7 +23,7 @@ const RANGES = [
   { key: "done", label: "Выполненные" },
 ];
 
-export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
+export function Tasks({ embedded = false, autoAdd = false }: { embedded?: boolean; autoAdd?: boolean } = {}) {
   const [range, setRange] = useState("today");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [quickInput, setQuickInput] = useState("");
@@ -29,6 +31,21 @@ export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
   const [quickRepeat, setQuickRepeat] = useState("");
   const [adding, setAdding] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [swipeUsed, setSwipeUsed] = useState(() => {
+    try {
+      return localStorage.getItem("navigator:swipe-used") === "1";
+    } catch {
+      return false;
+    }
+  });
+  function markSwipeUsed() {
+    setSwipeUsed(true);
+    try {
+      localStorage.setItem("navigator:swipe-used", "1");
+    } catch {
+      /* подсказка просто покажется снова */
+    }
+  }
 
   async function load() {
     setTasks(await api.get<Task[]>(`/tasks?range=${range}`));
@@ -45,6 +62,7 @@ export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
     try {
       await api.put(`/tasks/${task.id}`, { status: task.status === "done" ? "todo" : "done" });
       hapticImpact("light");
+      toast(task.status === "done" ? "Задача возвращена в работу" : "Задача выполнена");
       await load();
     } finally {
       setTogglingId(null);
@@ -60,6 +78,7 @@ export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
       // Срок хранится как полдень выбранного дня: так задача попадает в нужный день при любом часовом поясе.
       await api.post("/tasks", { title: quickInput, ...(quickDate ? { deadline: `${quickDate}T12:00:00.000Z` } : {}), ...(quickRepeat ? { recurrence: quickRepeat } : {}) });
       hapticNotification("success");
+      toast("Задача добавлена");
       setQuickInput("");
       setQuickDate("");
       setQuickRepeat("");
@@ -116,6 +135,7 @@ export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
         <div className="field-row">
           <input
             aria-label="Новая задача"
+            autoFocus={autoAdd}
             placeholder="Новая задача"
             value={quickInput}
             onChange={(e) => setQuickInput(e.target.value)}
@@ -135,6 +155,8 @@ export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
         <select id="task-repeat" value={quickRepeat} onChange={(e) => setQuickRepeat(e.target.value)}>
           <option value="">Не повторять</option>
           <option value="daily">Каждый день</option>
+          <option value="weekdays">По будням</option>
+          <option value="weekends">По выходным</option>
           <option value="weekly">Каждую неделю</option>
           <option value="monthly">Каждый месяц</option>
         </select>
@@ -151,7 +173,15 @@ export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
       <div className="card">
         {tasks.length === 0 && <p className="empty">{EMPTY[range]}</p>}
         {tasks.map((task) => (
-          <div className="task-row" key={task.id}>
+          <SwipeRow
+            key={task.id}
+            disabled={editingId === task.id || togglingId === task.id}
+            rightLabel={task.status === "done" ? "Вернуть" : "Выполнено"}
+            leftLabel="Удалить"
+            onRight={() => toggle(task)}
+            onLeft={() => removeTask(task.id)}
+            onUsed={markSwipeUsed}
+          >
             <button
               className={task.status === "done" ? "checkbox done" : "checkbox"}
               onClick={() => toggle(task)}
@@ -181,7 +211,7 @@ export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
                   {task.title}
                   {task.recurrence && (
                     <span className="small" style={{ display: "block" }}>
-                      повторяется: {{ daily: "каждый день", weekly: "каждую неделю", monthly: "каждый месяц" }[task.recurrence] ?? task.recurrence}
+                      повторяется: {{ daily: "каждый день", weekdays: "по будням", weekends: "по выходным", weekly: "каждую неделю", monthly: "каждый месяц" }[task.recurrence] ?? task.recurrence}
                     </span>
                   )}
                   {task.deadline && (
@@ -205,8 +235,11 @@ export function Tasks({ embedded = false }: { embedded?: boolean } = {}) {
                 </button>
               </>
             )}
-          </div>
+          </SwipeRow>
         ))}
+        {tasks.length > 0 && !swipeUsed && (
+          <p className="small swipe-hint">Смахни задачу вправо, чтобы выполнить, или влево, чтобы удалить.</p>
+        )}
       </div>
     </div>
   );

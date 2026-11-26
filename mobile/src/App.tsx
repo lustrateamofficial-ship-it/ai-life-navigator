@@ -1,3 +1,4 @@
+import { WeekReview } from "./screens/WeekReview";
 import { useEffect, useState } from "react";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { initTelegramApp } from "./platform/sdk";
@@ -7,10 +8,8 @@ import { Onboarding } from "./screens/Onboarding";
 import { Today } from "./screens/Today";
 import { Me } from "./screens/Me";
 import { Analytics } from "./screens/Analytics";
-import { Calendar } from "./screens/Calendar";
 import { Plans } from "./screens/Plans";
 import { PlanTomorrow } from "./screens/PlanTomorrow";
-import { Navigate } from "react-router-dom";
 import { Ideas } from "./screens/Ideas";
 import { Memory } from "./screens/Memory";
 import { Journal } from "./screens/Journal";
@@ -20,12 +19,10 @@ import { Trash } from "./screens/Trash";
 import { Mission } from "./screens/Mission";
 import { AppLock } from "./components/AppLock";
 import { ReminderBanner } from "./components/ReminderBanner";
-import { Reports } from "./screens/Reports";
-import { Correlations } from "./screens/Correlations";
-import { LifeGraph } from "./screens/LifeGraph";
 import { Frozen } from "./screens/Frozen";
-import { getFrozenInfo } from "../shim/safety";
+import { getFrozenInfo } from "../phone/safety";
 import { UpdateBanner } from "./components/UpdateBanner";
+import { Toast } from "./components/Toast";
 
 type AuthState = "loading" | "onboarding" | "ready" | "error" | "frozen";
 
@@ -75,11 +72,7 @@ export function App() {
         <Route path="/" element={<Today />} />
         <Route path="/plans" element={<Plans />} />
         <Route path="/plan-tomorrow" element={<PlanTomorrow />} />
-        <Route path="/goals" element={<Navigate to="/plans?tab=goals" replace />} />
-        <Route path="/tasks" element={<Navigate to="/plans?tab=tasks" replace />} />
         <Route path="/me" element={<Me />} />
-        <Route path="/calendar" element={<Calendar />} />
-        <Route path="/reminders" element={<Navigate to="/plans?tab=reminders" replace />} />
         <Route path="/ideas" element={<Ideas />} />
         <Route path="/memory" element={<Memory />} />
         <Route path="/journal" element={<Journal />} />
@@ -87,13 +80,13 @@ export function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/trash" element={<Trash />} />
         <Route path="/mission" element={<Mission />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/correlations" element={<Correlations />} />
-        <Route path="/life-graph" element={<LifeGraph />} />
+        <Route path="/week-review" element={<WeekReview />} />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="*" element={<Today />} />
       </Routes>
       <ReminderBanner />
       <BottomNav />
+      <Toast />
     </HashRouter>
     </AppLock>
   );

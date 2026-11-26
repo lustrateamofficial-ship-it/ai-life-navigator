@@ -4,7 +4,6 @@ import { api } from "../api/client";
 interface Week {
   entries: { count: number; days: number; previousCount: number };
   tasks: { done: number; donePrevious: number; created: number; open: number };
-  mood: { good: number; normal: number; bad: number };
   weight: { first: number; last: number; count: number } | null;
   money: { income: number; expenses: number };
   habitMarks: number;
@@ -40,10 +39,6 @@ export function weekLines(w: Week): string[] {
     lines.push(s + `. Открытых сейчас: ${t.open}.`);
   } else if (t.open > 0) {
     lines.push(`Открытых задач сейчас: ${t.open}.`);
-  }
-  const m = w.mood;
-  if (m.good + m.normal + m.bad > 0) {
-    lines.push(`Настроение дня: хорошо ${m.good}, нормально ${m.normal}, плохо ${m.bad}.`);
   }
   if (w.weight) {
     if (w.weight.count > 1) {

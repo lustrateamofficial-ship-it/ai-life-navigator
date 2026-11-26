@@ -1,7 +1,8 @@
+import { localDayKey } from "../utils/format";
 import { useState } from "react";
 import { dumpAll } from "../../shim/prisma";
-import { getFrozenInfo } from "../../shim/safety";
-import { isNative, nativeShareText } from "../../shim/native";
+import { getFrozenInfo } from "../../phone/safety";
+import { isNative, nativeShareText } from "../../phone/native";
 
 // Показывается, когда данные нельзя трогать: они новее приложения или обновление данных не удалось.
 export function Frozen() {
@@ -9,7 +10,7 @@ export function Frozen() {
   const [msg, setMsg] = useState("");
 
   async function save() {
-    const name = `данные-как-есть-${new Date().toISOString().slice(0, 10)}.json`;
+    const name = `данные-как-есть-${localDayKey()}.json`;
     const text = JSON.stringify(dumpAll());
     if (isNative() && (await nativeShareText(name, text))) return;
     const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));

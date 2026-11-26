@@ -3,7 +3,7 @@
 const { chromium } = require("playwright");
 (async () => {
   const b = await chromium.launch();
-  const routes = ["", "journal", "tasks", "goals", "me", "analytics", "calendar", "reminders", "ideas", "memory", "mission", "settings", "portrait", "trash", "reports", "correlations", "life-graph"];
+  const routes = ["", "journal", "plans?tab=tasks", "plans?tab=goals", "me", "analytics", "plans?tab=calendar", "plans?tab=reminders", "ideas", "memory", "mission", "settings", "portrait", "trash"];
   const problems = new Map(); const latin = new Map();
   const add = (m, k, v) => { if (!m.has(k)) m.set(k, v); };
   for (const [w, scheme] of [[320, "light"], [360, "dark"], [414, "light"]]) {

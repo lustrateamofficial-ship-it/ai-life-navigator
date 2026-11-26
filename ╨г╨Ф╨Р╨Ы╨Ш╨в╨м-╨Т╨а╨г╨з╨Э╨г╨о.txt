@@ -1,0 +1,32 @@
+Эти файлы больше не нужны. Архив удалять не умеет, поэтому удали их в репозитории на GitHub сам.
+Если какого-то файла у тебя уже нет, просто пропусти его.
+
+Сервер (backend):
+backend/src/services/futureSimulation.ts
+backend/src/__tests__/futureSimulation.test.ts
+backend/src/services/correlationEngine.ts
+backend/src/__tests__/correlationEngine.test.ts
+backend/src/services/lifeGraph.ts
+
+Экраны приложения:
+mobile/src/screens/Reports.tsx
+mobile/src/screens/Correlations.tsx
+mobile/src/screens/LifeGraph.tsx
+mobile/src/components/MoodPicker.tsx
+mobile/src/store/useTodayStore.ts
+mobile/u2.png
+
+Папка mobile/shim: оставь там только эти файлы, остальные удали:
+mobile/shim/README.md
+mobile/shim/env.ts
+mobile/shim/express.ts
+mobile/shim/node-stub.ts
+mobile/shim/prisma.ts
+mobile/shim/providers-anthropic.ts
+mobile/shim/router.tsx
+mobile/shim/schema.json
+mobile/shim/server.ts
+mobile/shim/zustand.ts
+(Остальное из shim переехало в mobile/phone.)
+
+Старые остатки сервера и Telegram, если они ещё есть в репозитории: папка frontend/, файлы docker-compose.yml, Caddyfile, update.sh, .env.example, backend/Dockerfile, backend/entrypoint.sh.

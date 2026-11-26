@@ -9,3 +9,8 @@ export function formatNumber(n: number): string {
 export function confirmDelete(what: string, recoverable = false): boolean {
   return window.confirm(`${what}\n${recoverable ? "Удалённое можно вернуть из корзины в течение 30 дней." : "Это нельзя отменить."}`);
 }
+
+// Сегодняшняя дата ГГГГ-ММ-ДД по местному времени телефона (а не по UTC: ночью UTC уже или ещё в другом дне).
+export function localDayKey(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

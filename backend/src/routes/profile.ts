@@ -5,11 +5,7 @@ import { prisma } from "../db/prisma.js";
 export const profileRouter = Router();
 
 const profileSchema = z.object({
-  weightGoalKg: z.number().positive().optional(),
-  dailyCalorieTarget: z.number().int().positive().optional(),
-  proteinTargetG: z.number().int().positive().optional(),
-  fatTargetG: z.number().int().positive().optional(),
-  carbTargetG: z.number().int().positive().optional(),
+  weightGoalKg: z.number().positive().max(500).nullable().optional(),
   city: z.string().optional(),
   onboardingDone: z.boolean().optional(),
 });

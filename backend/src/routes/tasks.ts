@@ -4,6 +4,7 @@ import { prisma } from "../db/prisma.js";
 import { recalcGoalProgressForTask } from "../services/goalProgress.js";
 import { computeNextTrigger } from "../utils/reminderRecurrence.js";
 import { localDateOnly } from "../utils/userTime.js";
+import { firstOccurrence } from "../utils/recurringStart.js";
 
 export const tasksRouter = Router();
 
@@ -17,7 +18,7 @@ const taskSchema = z.object({
   stageId: z.string().uuid().optional().nullable(),
   scheduledTime: z.string().datetime().optional(),
   status: z.enum(["todo", "in_progress", "done", "postponed", "cancelled"]).optional(),
-  recurrence: z.enum(["daily", "weekly", "monthly"]).nullable().optional(),
+  recurrence: z.enum(["daily", "weekdays", "weekends", "weekly", "monthly"]).nullable().optional(),
 });
 
 // БАГ (найден при аудите, IDOR): раньше goalId/stageId принимались от клиента без
@@ -98,6 +99,11 @@ tasksRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "Указанная цель или этап не найдены" });
   }
 
+  // Повторяющаяся задача без срока сразу попадает в задачи сегодняшнего дня (а для «по будням» и «по выходным»
+  // в ближайший подходящий день), иначе она висела бы без даты и не считалась ни в «Сегодня», ни в серии дней.
+  let deadline = parsed.data.deadline ? new Date(parsed.data.deadline) : undefined;
+  if (!deadline && parsed.data.recurrence) deadline = firstOccurrence(new Date(), parsed.data.recurrence, req.userTimezone ?? "UTC");
+
   const task = await prisma.task.create({
     data: {
       userId: req.userId!,
@@ -107,7 +113,7 @@ tasksRouter.post("/", async (req, res) => {
       goalId: parsed.data.goalId ?? undefined,
       stageId: parsed.data.stageId ?? undefined,
       estimatedDurationMin: parsed.data.estimatedDurationMin,
-      deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : undefined,
+      deadline,
       scheduledTime: parsed.data.scheduledTime ? new Date(parsed.data.scheduledTime) : undefined,
       recurrence: parsed.data.recurrence ?? undefined,
     },

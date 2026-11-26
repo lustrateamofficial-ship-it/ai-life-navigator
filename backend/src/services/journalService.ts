@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prisma } from "../db/prisma.js";
-import { extractPrinciplesFromJournal, parseFoodText } from "./ai/orchestrator.js";
+import { extractPrinciplesFromJournal } from "./ai/orchestrator.js";
 import { embedMemoryItem } from "./ai/semanticMemory.js";
 import { detectCrisis, supportResourcesForTimezone, type SupportResource } from "./distressDetection.js";
 import { localDateOnly } from "../utils/userTime.js";
@@ -67,18 +67,13 @@ export const applySchema = z.object({
     .max(10)
     .default([]),
   weight: z.object({ weightKg: z.number().min(20).max(400) }).nullable().optional(),
-  food: z.array(z.object({ rawInput: z.string().min(1).max(200) })).max(10).default([]),
 });
 
 export type ApplyInput = z.infer<typeof applySchema>;
 
-// Создаёт подтверждённое. Всё, кроме еды, пишется одной транзакцией БД: либо всё, либо ничего.
-// Еда разбирается через AI заранее (медленный вызов нельзя держать внутри транзакции).
+// Создаёт подтверждённое одной транзакцией БД: либо всё, либо ничего.
 export async function applyProposals(userId: string, timezone: string, p: ApplyInput) {
   const today = localDateOnly(new Date(), timezone);
-
-  const foodParsed: Array<{ raw: string; items: Awaited<ReturnType<typeof parseFoodText>> }> = [];
-  for (const f of p.food) foodParsed.push({ raw: f.rawInput, items: await parseFoodText(f.rawInput) });
 
   await prisma.$transaction(async (tx) => {
     for (const t of p.tasks) {
@@ -102,25 +97,6 @@ export async function applyProposals(userId: string, timezone: string, p: ApplyI
         create: { userId, date: today, weightKg: p.weight.weightKg },
       });
     }
-    for (const f of foodParsed) {
-      await tx.foodLog.create({
-        data: {
-          userId,
-          date: today,
-          rawInput: f.raw,
-          entries: {
-            create: f.items.map((i) => ({
-              nameOverride: i.name,
-              grams: i.grams,
-              calories: i.calories,
-              proteinG: i.proteinG,
-              fatG: i.fatG,
-              carbsG: i.carbsG,
-            })),
-          },
-        },
-      });
-    }
   });
 
   return {
@@ -129,6 +105,5 @@ export async function applyProposals(userId: string, timezone: string, p: ApplyI
     ideas: p.ideas.length,
     transactions: p.transactions.length,
     weight: p.weight ? 1 : 0,
-    food: p.food.length,
   };
 }

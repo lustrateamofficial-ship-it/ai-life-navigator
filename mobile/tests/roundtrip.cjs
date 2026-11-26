@@ -13,7 +13,7 @@ const { chromium } = require("playwright");
     ["POST", "/tasks", { title: "разовая", deadline: d(2) }], ["POST", "/tasks", { title: "повтор", deadline: d(1), recurrence: "weekly" }],
     ["POST", "/goals", { title: "цель", reason: "потому что" }], ["POST", "/ideas", { content: "идея" }], ["POST", "/memory", { type: "principle", content: "принцип" }],
     ["POST", "/calendar", { title: "встреча", startTime: d(3), endTime: d(3.05) }], ["POST", "/reminders", { title: "напомнить", triggerAt: d(1), recurrence: "daily" }],
-    ["POST", "/health/weight", { weightKg: 81.5 }], ["POST", "/health/food", { text: "200 г риса" }],
+    ["POST", "/health/weight", { weightKg: 81.5 }],
     ["POST", "/finance/income", { amount: 90000, category: "Зарплата" }], ["POST", "/finance/expenses", { amount: 1234, category: "Еда" }],
     ["POST", "/finance/debts", { title: "долг", totalAmount: 5000, remainingAmount: 4000 }], ["POST", "/finance/savings", { title: "копилка", targetAmount: 10000, currentAmount: 1000 }],
     ["POST", "/habits", { title: "зарядка" }],
@@ -24,7 +24,7 @@ const { chromium } = require("playwright");
   const ex1 = await call("GET", "/account/export"); const t1 = Buffer.from(ex1.body).toString("utf8"); const j1 = JSON.parse(t1);
   console.log("в выгрузке разделов:", Object.keys(j1).length, "| размер", t1.length);
   const strip = (v) => Array.isArray(v) ? v.map(strip).sort((a, c) => JSON.stringify(a).localeCompare(JSON.stringify(c))) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).filter(([k]) => !/^(id|userId|exportedAt|updatedAt|.*Id)$/.test(k)).map(([k, x]) => [k, strip(x)])) : v;
-  const NOCREATED = new Set(["profile", "habits", "transactions", "reminders", "weightLogs", "foodLogs", "debts", "savingsGoals", "calendarEvents"]);
+  const NOCREATED = new Set(["profile", "habits", "transactions", "reminders", "weightLogs", "debts", "savingsGoals", "calendarEvents"]);
   const compare = (A, B, label) => { let diffs = 0; const drop = (o, k) => NOCREATED.has(k) ? JSON.parse(JSON.stringify(o ?? null), (kk, v) => kk === "createdAt" ? undefined : v) : o; A = Object.fromEntries(Object.entries(A).map(([k, v]) => [k, drop(v, k)])); B = Object.fromEntries(Object.entries(B).map(([k, v]) => [k, drop(v, k)])); for (const k of new Set([...Object.keys(A), ...Object.keys(B)])) { const a = JSON.stringify(strip(A[k])), c = JSON.stringify(strip(B[k])); if (a !== c) { diffs++; console.log("  РАЗЛИЧИЕ", label, k, "\n    до:", a.slice(0, 150), "\n    после:", c.slice(0, 150)); } } console.log(label + ": разделов с различиями:", diffs); return diffs; };
   // 1) повторное восстановление того же файла в то же приложение ничего не удваивает
   const rs = await call("POST", "/account/restore", j1); console.log("повторное восстановление:", rs.s, JSON.stringify(rs.body.summary).slice(0, 260));

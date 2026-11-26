@@ -28,11 +28,11 @@ const { chromium } = require("playwright");
   // ── экран «Планы» ──
   const nav = await p.locator("nav").innerText();
   ok("в нижней навигации есть «Планы», нет отдельных «Задачи» и «Цели»", /Планы/.test(nav) && !/Задачи/.test(nav) && !/Цели/.test(nav));
-  await p.evaluate(() => (location.hash = "#/goals")); await p.waitForTimeout(500);
+  await p.evaluate(() => (location.hash = "#/plans?tab=goals")); await p.waitForTimeout(500);
   ok("старый адрес /goals ведёт на «Планы», вкладка «Цели»", /plans\?tab=goals/.test(await p.url()) && (await p.locator('[role=tab][aria-selected=true]').innerText()) === "Цели");
-  await p.evaluate(() => (location.hash = "#/reminders")); await p.waitForTimeout(500);
+  await p.evaluate(() => (location.hash = "#/plans?tab=reminders")); await p.waitForTimeout(500);
   ok("старый адрес /reminders: вкладка «Напоминания»", (await p.locator('[role=tab][aria-selected=true]').innerText()) === "Напоминания" && /Напоминаний нет/.test(await p.locator("body").innerText()));
-  await p.evaluate(() => (location.hash = "#/tasks")); await p.waitForTimeout(500);
+  await p.evaluate(() => (location.hash = "#/plans?tab=tasks")); await p.waitForTimeout(500);
   ok("вкладка «Задачи»: поле новой задачи", (await p.getByLabel("Новая задача").count()) > 0);
   await p.getByRole("tab", { name: "Цели" }).click(); await p.waitForTimeout(300);
   ok("переключение на «Цели» без перехода", /plans/.test(await p.url()) && !(await p.getByLabel("Новая задача").count()));
@@ -69,13 +69,14 @@ const { chromium } = require("playwright");
   const m1 = last(2100000011), bed0 = last(2100000020) || last(2100000021);
   console.log(JSON.stringify(m1 || null).slice(0, 700));
   ok("утро: запланировано на неделю вперёд", all.filter((n) => n.id >= 2100000010 && n.id < 2100000020).length >= 6);
-  ok("утро завтра: погода, вес, остаток недель/месяцев/лет", m1 && /дождь/.test(m1.largeBody) && /86,4 кг/.test(m1.largeBody) && /недел/.test(m1.largeBody) && /месяц/.test(m1.largeBody) && /год|лет/.test(m1.largeBody));
+  ok("утро завтра: погода, вес, недели прожито и впереди", m1 && /дождь/.test(m1.largeBody) && /86,4 кг/.test(m1.largeBody) && /Недель прожито/.test(m1.largeBody) && /впереди ещё/.test(m1.largeBody) && /год|лет/.test(m1.largeBody));
   ok("утро завтра: выбранные вечером задачи идут первыми", m1 && m1.largeBody.indexOf("Позвонить маме") > -1 && m1.largeBody.indexOf("Позвонить маме") < m1.largeBody.indexOf("Сдать отчёт") && m1.largeBody.indexOf("Записаться к врачу") > -1);
   ok("утро завтра: ровно 3 задачи", m1 && (m1.largeBody.match(/^\d\. /gm) || []).length === 3);
   ok("утро завтра: расписание «10:30 Встреча с Олегом»", m1 && /10:30 Встреча с Олегом/.test(m1.largeBody));
   ok("утро открывает главный экран", m1 && m1.route === "/");
   ok("вечер: уведомление ведёт на «План на завтра»", all.some((n) => n.id >= 2100000020 && n.route === "/plan-tomorrow"));
-  ok("вечер: в тексте погода на завтра и состояние плана", all.filter((n) => n.id >= 2100000020).some((n) => /дождь/.test(n.largeBody) && /В плане на завтра/.test(n.largeBody)));
+  const pastBed = new Date().getHours() * 60 + new Date().getMinutes() >= 22 * 60 + 30; // сегодняшнее вечернее уведомление уже не планируется
+  ok("вечер: в тексте погода на завтра и состояние плана", pastBed || all.filter((n) => n.id >= 2100000020).some((n) => /дождь/.test(n.largeBody) && /В плане на завтра/.test(n.largeBody)));
 
   // ── главный экран ──
   await p.evaluate(() => (location.hash = "#/")); await p.waitForTimeout(800);

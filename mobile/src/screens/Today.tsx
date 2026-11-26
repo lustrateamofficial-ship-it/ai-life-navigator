@@ -1,18 +1,25 @@
 import { useEffect, useState } from "react";
-import { useTodayStore } from "../store/useTodayStore";
-import { DirectionScoreCard } from "../components/DirectionScoreCard";
 import { JournalComposer } from "../components/JournalComposer";
 import { EarlierCard } from "../components/Earlier";
 import { BackupNudge } from "../components/BackupNudge";
 import { SetupCard } from "../components/SetupCard";
 import { UpdateNotice } from "../components/UpdateCard";
-import { useNavigate } from "react-router-dom";
-import { MoodPicker, type Mood } from "../components/MoodPicker";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { HomeCustomize } from "../components/HomeCustomize";
+import { DayRing } from "../components/charts";
+import { IntroCard } from "../components/IntroCard";
+import { plural } from "../components/WeekDigest";
+import { readStreak, recordDayDone, streakEvent } from "../../phone/streak";
+import { WeekReviewNudge } from "../components/WeekReviewNudge";
+import { WeekTile } from "../components/WeekTile";
+import { WeightTile } from "../components/WeightTile";
+import { HALF_BLOCKS, PERIODS, periodAt, readLayout, writeLayout, type BlockId, type Layout, type Period } from "../../phone/homeLayout";
 import { api, ApiError } from "../api/client";
 import { hapticImpact } from "../platform/sdk";
 import { useAppearance } from "../useAppearance";
 import { EasyStart } from "../components/EasyStart";
 import { DayBrief } from "../components/DayBrief";
+import { ReadyAnalyses } from "../components/ReadyAnalyses";
 
 interface HomeFocus {
   focusTasks: Array<{ id: string; title: string; reason: "overdue" | "today" | "priority" | "open" }>;
@@ -21,7 +28,6 @@ interface HomeFocus {
   nextReminder: { title: string; triggerAt: string } | null;
   journalNudge: "none" | "today_empty" | "first";
   journalDaysSince: number | null;
-  mood: Mood | null;
 }
 
 interface Observation {
@@ -46,13 +52,31 @@ function nudgeText(f: HomeFocus): string | null {
   return null;
 }
 
+// true, если блок i уже стоит во второй половине пары.
+function pairedWithPrev(list: BlockId[], i: number): boolean {
+  let run = 0;
+  for (let k = i; k >= 0 && HALF_BLOCKS.has(list[k]!); k--) run++;
+  return run % 2 === 0;
+}
+
 // Главный экран построен вокруг дневника: сверху поле записи, под ним то, что полезно сейчас.
 // Показатели (оценка направления, вес) остались, но свёрнуты: оценка числом не должна быть первым,
 // что видит человек, особенно в плохой день.
 export function Today() {
   const navigate = useNavigate();
   const { lite } = useAppearance();
-  const { currentWeight, score, driftMessage, fetchToday } = useTodayStore();
+  const [params, setParams] = useSearchParams();
+  const [layout, setLayout] = useState<Layout>(readLayout);
+  const [editing, setEditing] = useState(false);
+  const [streak, setStreak] = useState(() => readStreak());
+  useEffect(() => {
+    const on = () => setStreak(readStreak());
+    void recordDayDone().then(setStreak);
+    window.addEventListener(streakEvent, on);
+    return () => window.removeEventListener(streakEvent, on);
+  }, []);
+  const [period, setPeriod] = useState<Period>(periodAt());
+  const [forceWrite, setForceWrite] = useState(false); // пришли из «+ → Запись»: показать поле, даже если блок выключен
   const [draft, setDraft] = useState("");
   const [home, setHome] = useState<HomeFocus | null>(null);
   const [homeError, setHomeError] = useState(false);
@@ -73,9 +97,25 @@ export function Today() {
   }
 
   useEffect(() => {
+    const sync = () => setLayout(readLayout());
+    window.addEventListener("navigator:home-layout", sync);
+    return () => window.removeEventListener("navigator:home-layout", sync);
+  }, []);
+
+  useEffect(() => {
+    if (params.get("write") !== "1") return;
+    setForceWrite(true);
+    setParams({}, { replace: true });
+    setTimeout(() => {
+      const el = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Запись в дневник"]');
+      el?.scrollIntoView({ block: "center" });
+      el?.focus();
+    }, 120);
+  }, [params, setParams]);
+
+  useEffect(() => {
     loadHome();
-    fetchToday();
-  }, [fetchToday]);
+  }, []);
 
   async function markDone(id: string) {
     if (doneBusyId) return;
@@ -115,50 +155,39 @@ export function Today() {
 
   const today = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
   const nudge = home ? nudgeText(home) : null;
+  const current = PERIODS.find((p) => p.id === period)!;
 
-  return (
-    <div className="screen">
-      <header className="page-header">
-        <h2>Сегодня</h2>
-        <p>{today}</p>
-      </header>
+  function change(next: Layout) {
+    setLayout(next);
+    writeLayout(next);
+  }
 
-      {nudge && <p className="nudge">{nudge}</p>}
-      <DayBrief />
-      <EasyStart daysSince={home?.journalDaysSince ?? null} nudge={home?.journalNudge ?? "none"} onPick={setDraft} />
-      <JournalComposer onSaved={loadHome} draft={draft} onDraftUsed={() => setDraft("")} placeholder="Как день? Что на уме, что нужно сделать, на что потратил?" />
-
-      <UpdateNotice onOpen={() => navigate("/settings")} />
-
-      <SetupCard />
-
-      <BackupNudge />
-
-      {!lite && <MoodPicker initial={home?.mood ?? null} />}
-
-      <EarlierCard />
-
-      <div className="card">
+  const blocks: Record<BlockId, JSX.Element | null> = {
+    week: <WeekTile />,
+    weight: <WeightTile />,
+    brief: <DayBrief showTasks={!layout[period].includes("focus")} />,
+    ring: <DayRing />,
+    write: (
+      <div>
+        <EasyStart daysSince={home?.journalDaysSince ?? null} nudge={home?.journalNudge ?? "none"} onPick={setDraft} />
+        <JournalComposer onSaved={loadHome} draft={draft} onDraftUsed={() => setDraft("")} placeholder="Как день? Что на уме, что нужно сделать, на что потратил?" />
+      </div>
+    ),
+    focus: (
+      <div className="card list-tile">
         <div className="card-title">Что полезно сейчас</div>
         {!home && !homeError && <p>Загрузка...</p>}
         {homeError && <p>Не удалось загрузить. Потяни вниз и попробуй ещё раз.</p>}
-        {home && home.focusTasks.length === 0 && <p>Открытых задач нет. Можно просто записать мысли выше.</p>}
+        {home && home.focusTasks.length === 0 && <p>Открытых задач нет. Можно просто записать мысли.</p>}
         {home && home.overdueCount > 0 && (
           <p style={{ color: "var(--orange)", marginBottom: 4, fontWeight: 500 }}>Просроченных задач: {home.overdueCount}</p>
         )}
         {home?.focusTasks.map((task) => (
           <div className="task-row" key={task.id}>
-            <button
-              className="checkbox"
-              onClick={() => markDone(task.id)}
-              disabled={doneBusyId === task.id}
-              aria-label="отметить выполненной"
-            />
+            <button className="checkbox" onClick={() => markDone(task.id)} disabled={doneBusyId === task.id} aria-label="отметить выполненной" />
             <span>
               {task.title}
-              {REASON_LABEL[task.reason] && (
-                <span className={`tag ${task.reason === "overdue" ? "overdue" : ""}`}>{REASON_LABEL[task.reason]}</span>
-              )}
+              {REASON_LABEL[task.reason] && <span className={`tag ${task.reason === "overdue" ? "overdue" : ""}`}>{REASON_LABEL[task.reason]}</span>}
             </span>
           </div>
         ))}
@@ -172,65 +201,101 @@ export function Today() {
           </p>
         )}
       </div>
-
-      {!lite && (
-        <>
-      <div className="card">
-        <div className="card-title">Что видно по моим записям</div>
-        <p style={{ marginBottom: 8, fontSize: 13 }}>
-          Одно осторожное наблюдение по недавним записям, с цитатой. Личные записи не используются.
-        </p>
-        <button className="secondary" style={{ width: "100%" }} onClick={handleObservation} disabled={observing}>
-          {observing ? "Читаю..." : "Показать наблюдение"}
-        </button>
-        {observation?.observation && (
-          <div style={{ marginTop: 12 }}>
-            <p style={{ color: "var(--text)" }}>{observation.observation}</p>
-            {observation.quote && <blockquote className="quote">«{observation.quote}»</blockquote>}
-            <p style={{ marginTop: 10, fontSize: 13 }}>Это не диагноз и не вывод о тебе, только наблюдение по тексту.</p>
-          </div>
-        )}
-        {observation && !observation.observation && <p style={{ marginTop: 12 }}>{observation.reason}</p>}
+    ),
+    earlier: <EarlierCard />,
+    insight: lite ? null : (
+      <div>
+        <div className="card">
+          <div className="card-title">Что видно по моим записям</div>
+          <p style={{ marginBottom: 8, fontSize: 13 }}>Одно осторожное наблюдение по недавним записям, с цитатой. Личные записи не используются.</p>
+          <button className="secondary" style={{ width: "100%" }} onClick={handleObservation} disabled={observing}>
+            {observing ? "Читаю..." : "Показать наблюдение"}
+          </button>
+          {observation?.observation && (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ color: "var(--text)" }}>{observation.observation}</p>
+              {observation.quote && <blockquote className="quote">«{observation.quote}»</blockquote>}
+              <p style={{ marginTop: 10, fontSize: 13 }}>Это не диагноз и не вывод о тебе, только наблюдение по тексту.</p>
+            </div>
+          )}
+          {observation && !observation.observation && <p style={{ marginTop: 12 }}>{observation.reason}</p>}
+        </div>
+        <div className="card">
+          <div className="card-title">Что делать сейчас</div>
+          <button className="secondary" style={{ width: "100%" }} onClick={handleWhatToDoNow} disabled={nextActionLoading}>
+            {nextActionLoading ? "Думаю..." : "Что мне делать сейчас?"}
+          </button>
+          {nextActionError && <p style={{ color: "var(--red)", marginTop: 8 }}>{nextActionError}</p>}
+          {nextAction && (
+            <div style={{ marginTop: 12 }}>
+              {nextAction.actions.map((a, i) => (
+                <p key={i} style={{ color: "var(--text)", marginBottom: 4 }}>
+                  {a}
+                </p>
+              ))}
+              <p style={{ marginTop: 8, fontSize: 13 }}>{nextAction.reasoning}</p>
+            </div>
+          )}
+        </div>
       </div>
+    ),
+  };
 
-      <div className="card">
-        <div className="card-title">Что делать сейчас</div>
-        <button className="secondary" style={{ width: "100%" }} onClick={handleWhatToDoNow} disabled={nextActionLoading}>
-          {nextActionLoading ? "Думаю..." : "Что мне делать сейчас?"}
-        </button>
-        {nextActionError && <p style={{ color: "var(--red)", marginTop: 8 }}>{nextActionError}</p>}
-        {nextAction && (
-          <div style={{ marginTop: 12 }}>
-            {nextAction.actions.map((a, i) => (
-              <p key={i} style={{ color: "var(--text)", marginBottom: 4 }}>
-                {a}
-              </p>
-            ))}
-            <p style={{ marginTop: 8, fontSize: 13 }}>{nextAction.reasoning}</p>
-          </div>
-        )}
+  const shown: BlockId[] = forceWrite && !layout[period].includes("write") ? ["write", ...layout[period]] : layout[period];
+
+  if (editing) {
+    return (
+      <div className="screen">
+        <HomeCustomize layout={layout} period={period} onPeriod={setPeriod} onChange={change} onDone={() => setEditing(false)} />
       </div>
+    );
+  }
 
-        </>
-      )}
+  return (
+    <div className="screen">
+      <header className="page-header page-header-row">
+        <div>
+          <p className="date-line">{today}</p>
+          <h2>{current.greeting}</h2>
+        </div>
+        <div className="header-actions">
+          {streak > 0 && (
+            <span className="streak-chip" role="status" aria-label={`Серия: ${streak} ${plural(streak, "день", "дня", "дней")} подряд`}>
+              серия {streak} {plural(streak, "день", "дня", "дней")}
+            </span>
+          )}
+        <button className="icon-btn" aria-label="Настроить экран" onClick={() => setEditing(true)}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 20l4-1 11-11-3-3L5 16l-1 4z" />
+            <path d="M14 7l3 3" />
+          </svg>
+        </button>
+        </div>
+      </header>
 
-      {!lite && (
-      <details className="card">
-        <summary>Показатели</summary>
-        <p style={{ marginTop: 10 }}>Вес: {currentWeight ? `${currentWeight} кг` : "ещё не внесён"}</p>
-        {score && (
-          <DirectionScoreCard
-            overall={score.overall}
-            goalsScore={score.goalsScore}
-            healthScore={score.healthScore}
-            financeScore={score.financeScore}
-            habitsScore={score.habitsScore}
-            timeScore={score.timeScore}
-            driftMessage={driftMessage}
-          />
-        )}
-      </details>
-      )}
+      <WeekReviewNudge />
+      {nudge && <p className="nudge">{nudge}</p>}
+      <ReadyAnalyses />
+      <UpdateNotice onOpen={() => navigate("/settings")} />
+      <IntroCard />
+      <SetupCard />
+      <BackupNudge />
+
+      <div className="home-grid">
+        {shown.map((id, i) => {
+          // Две «половинки» подряд встают рядом; одинокая плитка занимает всю ширину.
+          const half = HALF_BLOCKS.has(id);
+          const prevHalf = i > 0 && HALF_BLOCKS.has(shown[i - 1]!) && !pairedWithPrev(shown, i - 1);
+          const nextHalf = i < shown.length - 1 && HALF_BLOCKS.has(shown[i + 1]!);
+          const single = half && !prevHalf && !nextHalf;
+          return (
+            <div key={id} data-block={id} className={half && !single ? "half" : "full"}>
+              {blocks[id]}
+            </div>
+          );
+        })}
+      </div>
+      {shown.length === 0 && <p className="custom-hint">Все блоки выключены. Нажми карандаш сверху и выбери, что показывать.</p>}
     </div>
   );
 }

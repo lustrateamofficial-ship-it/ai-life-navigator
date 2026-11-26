@@ -1,3 +1,4 @@
+import { toast } from "../../phone/feedback";
 import { confirmDelete } from "../utils/format";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -29,9 +30,9 @@ function toDatetimeLocal(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function Reminders({ embedded = false }: { embedded?: boolean } = {}) {
+export function Reminders({ embedded = false, autoAdd = false }: { embedded?: boolean; autoAdd?: boolean } = {}) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(autoAdd);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [triggerAt, setTriggerAt] = useState("");
@@ -79,6 +80,7 @@ export function Reminders({ embedded = false }: { embedded?: boolean } = {}) {
         await api.post("/reminders", payload);
       }
       hapticNotification("success");
+      toast("Напоминание сохранено");
       closeForm();
       await load();
     } finally {

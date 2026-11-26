@@ -7,7 +7,7 @@ interface Log {
 
 // График веса за последние записи (до 90) и сглаженный тренд: среднее по 7 последним точкам.
 // Тренд нужен, чтобы единичный скачок не выглядел катастрофой.
-export function WeightChart({ logs }: { logs: Log[] }) {
+export function WeightChart({ logs, goalKg }: { logs: Log[]; goalKg?: number | null }) {
   const pts = [...logs].sort((a, b) => a.date.localeCompare(b.date));
   if (pts.length < 3) {
     return (
@@ -25,8 +25,9 @@ export function WeightChart({ logs }: { logs: Log[] }) {
     const slice = values.slice(Math.max(0, i - 6), i + 1);
     return slice.reduce((a, b) => a + b, 0) / slice.length;
   });
-  const min = Math.min(...values, ...trend);
-  const max = Math.max(...values, ...trend);
+  const goal = goalKg && goalKg > 0 ? goalKg : null;
+  const min = Math.min(...values, ...trend, ...(goal ? [goal] : []));
+  const max = Math.max(...values, ...trend, ...(goal ? [goal] : []));
   const span = max - min || 1;
   const x = (i: number) => padX + (i / (pts.length - 1)) * (W - padX * 2);
   const y = (v: number) => padY + (1 - (v - min) / span) * (H - padY * 2);
@@ -34,13 +35,19 @@ export function WeightChart({ logs }: { logs: Log[] }) {
   const first = new Date(pts[0].date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: "UTC" });
   const last = new Date(pts[pts.length - 1].date).toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: "UTC" });
   const change = Math.round((trend[trend.length - 1] - trend[0]) * 10) / 10;
-  const summary = `Вес с ${first} по ${last}: тренд ${formatNumber(trend[0])} → ${formatNumber(trend[trend.length - 1])} кг, изменение ${change > 0 ? "+" : ""}${formatNumber(change)} кг. Записей: ${pts.length}.`;
+  const summary = `Вес с ${first} по ${last}: тренд ${formatNumber(trend[0])} → ${formatNumber(trend[trend.length - 1])} кг, изменение ${change > 0 ? "+" : ""}${formatNumber(change)} кг. Записей: ${pts.length}.${goal ? ` Цель ${formatNumber(goal)} кг.` : ""}`;
 
   return (
     <div style={{ marginTop: 14 }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={summary} style={{ width: "100%", height: "auto", display: "block" }}>
         <line x1={padX} x2={W - padX} y1={y(min)} y2={y(min)} stroke="var(--border)" strokeWidth="1" />
         <line x1={padX} x2={W - padX} y1={y(max)} y2={y(max)} stroke="var(--border)" strokeWidth="1" />
+        {goal && (
+          <>
+            <line x1={padX} x2={W - padX} y1={y(goal)} y2={y(goal)} stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="6 4" />
+            <text x={W - padX} y={y(goal) - 4} textAnchor="end" fontSize="10" fill="var(--accent)">цель {formatNumber(goal)}</text>
+          </>
+        )}
         <path d={line(values)} fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="3 3" />
         {values.map((v, i) => (
           <circle key={i} cx={x(i)} cy={y(v)} r="2.5" fill="var(--text-muted)" />

@@ -16,6 +16,7 @@ datasource db {
 
 model User {
   id            String   @id @default(uuid())
+  // Остаток прежней версии: Telegram больше не используется, поле нужно только как уникальный ключ и для старых копий.
   telegramId    BigInt   @unique
   username      String?
   firstName     String?

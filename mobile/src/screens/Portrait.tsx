@@ -86,6 +86,10 @@ export function Portrait() {
 
       {portrait && (
         <>
+          <p className="small" id="portrait-date">
+            Составлен {new Date(portrait.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}.
+            Этот портрет сейчас учитывает ИИ.
+          </p>
           <div className="card">
             <div className="card-title">Закономерности в записях</div>
             {portrait.content.patterns.map((p, i) => (

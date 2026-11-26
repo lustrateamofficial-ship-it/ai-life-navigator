@@ -7,7 +7,7 @@ const { chromium } = require("playwright");
   const txt = async () => (await p.innerText("body")).replace(/\n+/g, " | ");
   await p.goto("http://localhost:8099/"); await p.waitForTimeout(600);
   await p.evaluate(() => window.__api("PUT", "/profile", { onboardingDone: true }));
-  await p.goto("http://localhost:8099/#/tasks"); await p.reload(); await p.waitForTimeout(800);
+  await p.goto("http://localhost:8099/#/plans?tab=tasks"); await p.reload(); await p.waitForTimeout(800);
   const tomorrow = new Date(Date.now() + 86400e3).toLocaleDateString("sv-SE");
   await p.getByLabel("Новая задача").fill("Сдать отчёт");
   await p.locator("#task-date").fill(tomorrow);

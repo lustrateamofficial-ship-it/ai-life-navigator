@@ -14,7 +14,28 @@ concurrency:
   group: android-release
   cancel-in-progress: false
 jobs:
+  # Быстрые проверки перед сборкой: если они не прошли, apk не выпускается.
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Тесты серверной логики (в четырёх часовых поясах)
+        run: |
+          cd backend
+          npm install --ignore-scripts --no-audit --no-fund
+          cd ..
+          node scripts/test-tz.mjs backend
+      - name: Тесты правил приложения и проверка имён
+        working-directory: mobile
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run check
+          node ../scripts/test-tz.mjs mobile
+
   apk:
+    needs: checks
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,6 +69,8 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - run: npm install
       - run: npm run build
       - run: npx cap add android

@@ -7,19 +7,25 @@ function currentPath(): string {
 }
 
 const PathContext = createContext<string>("/");
+// Параметры адреса после «?»: меняются без смены экрана (#/plans?tab=goals → ?tab=tasks), и экран должен это увидеть.
+const QueryContext = createContext<string>("");
+
+function currentQuery(): string {
+  return window.location.hash.split("?")[1] ?? "";
+}
 
 export function HashRouter({ children }: { children: ReactNode }) {
   const [path, setPath] = useState(currentPath());
+  const [query, setQuery] = useState(currentQuery());
   useEffect(() => {
-    const onChange = () => setPath(currentPath());
+    const onChange = () => {
+      setPath(currentPath());
+      setQuery(currentQuery());
+    };
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
-  return createElement(PathContext.Provider, { value: path }, children);
-}
-
-export function useLocation() {
-  return { pathname: useContext(PathContext) };
+  return createElement(PathContext.Provider, { value: path }, createElement(QueryContext.Provider, { value: query }, children));
 }
 
 export function useNavigate() {
@@ -38,6 +44,8 @@ export function Routes({ children }: { children: ReactNode }) {
       break;
     }
   }
+  // Неизвестный адрес (старая закладка, убранный экран): показываем маршрут "*", а не пустой экран.
+  if (found === null) found = (list as any[]).find((c) => c?.props?.path === "*")?.props.element ?? null;
   return createElement("div", { key: path, className: "route" }, found);
 }
 
@@ -47,6 +55,7 @@ export function Route(_props: { path: string; element: ReactNode }) {
 
 export function Link({ to, children, ...rest }: { to: string; children?: ReactNode; [k: string]: any }) {
   const onClick = (e: MouseEvent) => {
+    rest.onClick?.(e); // обработчик, переданный снаружи, выполняется до перехода
     e.preventDefault();
     window.location.hash = to;
   };
@@ -67,19 +76,11 @@ export function NavLink({ to, className, children, ...rest }: { to: string; clas
 // Параметры после «?» в адресе (#/plans?tab=goals). Запись заменяет текущий адрес без новой записи в истории.
 export function useSearchParams(): [URLSearchParams, (next: Record<string, string>, opts?: { replace?: boolean }) => void] {
   useContext(PathContext);
-  const q = window.location.hash.split("?")[1] ?? "";
+  const q = useContext(QueryContext);
   const set = (next: Record<string, string>, opts?: { replace?: boolean }) => {
     const target = `#${currentPath()}?${new URLSearchParams(next).toString()}`;
     if (opts?.replace) window.history.replaceState(null, "", target);
     else window.location.hash = target.slice(1);
   };
   return [new URLSearchParams(q), set];
-}
-
-// Переадресация старых адресов (/tasks, /goals, /reminders) на экран «Планы».
-export function Navigate({ to }: { to: string; replace?: boolean }) {
-  useEffect(() => {
-    window.location.replace(`#${to}`);
-  }, [to]);
-  return null;
 }

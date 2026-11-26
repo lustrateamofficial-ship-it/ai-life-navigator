@@ -1,6 +1,6 @@
 // Вместо библиотеки Anthropic: запросы идут через маршрутизатор ИИ (aiRouter.ts),
 // который по очереди пробует подключённые сервисы.
-import { generateText as routed, type AiModelTier } from "./aiRouter";
+import { generateText as routed, type AiModelTier } from "../phone/aiRouter";
 
 export type { AiModelTier };
 

@@ -30,7 +30,7 @@ const swap = {
 const plugin = {
   name: "phone-swap",
   setup(b) {
-    b.onResolve({ filter: /^(express|react-router-dom|zustand|node:zlib|node:crypto)$/ }, (args) => {
+    b.onResolve({ filter: /^(express|react-router-dom|zustand|node:zlib)$/ }, (args) => {
       if (args.path === "express") return { path: resolve(shim, "express.ts") };
       if (args.path === "react-router-dom") return { path: resolve(shim, "router.tsx") };
       if (args.path === "zustand") return { path: resolve(shim, "zustand.ts") };
@@ -41,8 +41,6 @@ const plugin = {
         if (args.path.replace(/\.js$/, "").endsWith(key)) return { path: target };
       }
     });
-    // Серверные модули, которые на телефоне не нужны: Google, бот, расписание, Sentry.
-    b.onResolve({ filter: /^\.\.?\/.*(googleDrive|sentry|scheduler)(\.js)?$/ }, () => ({ path: resolve(shim, "node-stub.ts") }));
     // @prisma/client нужен только для типов
     // На телефоне сервера нет: тексты для пользователя говорят про настройки приложения.
     b.onLoad({ filter: /backend\/src\/.*\.ts$/ }, (args) => {
@@ -50,7 +48,13 @@ const plugin = {
       // На телефоне выбор ИИ делает одна общая очередь (providers-anthropic.ts): главный и запасные.
       const isTextGeneration = /services\/ai\/textGeneration\.ts$/.test(args.path);
       if (isTextGeneration) {
-        text = text.replace("if (isGeminiConfigured()) {", "if (false) {").replace("if (isGroqConfigured()) {", "if (false) {");
+        let patched = text;
+        for (const line of ["if (isGeminiConfigured()) {", "if (isGroqConfigured()) {"]) {
+          // Если серверный файл изменился и замена не сработала, телефон начал бы ходить к Gemini и Groq мимо общей очереди: лучше остановить сборку.
+          if (!patched.includes(line)) throw new Error(`build.mjs: в backend/src/services/ai/textGeneration.ts не нашлась строка «${line}», замену нужно обновить`);
+          patched = patched.replace(line, "if (false) {");
+        }
+        text = patched;
       }
       if (!/на сервере|ошибка сервера|AI временно|AI недоступен/.test(text) && !isTextGeneration) return undefined;
       text = text
@@ -82,6 +86,20 @@ const result = await build({
   metafile: true,
   nodePaths: ["/opt/npm-tools/node_modules", resolve(root, "node_modules")],
 });
+
+// Проверка подмен: в сборку попали заменители, а серверные оригиналы (база, настройки, Anthropic, Prisma Client) нет.
+{
+  const inputs = Object.keys(result.metafile.inputs);
+  const has = (re) => inputs.some((i) => re.test(i));
+  const problems = [];
+  for (const [key, target] of Object.entries(swap)) {
+    if (!inputs.some((i) => resolve(i) === target)) problems.push(`заменитель для «${key}» не подключён`);
+  }
+  for (const bad of [/backend\/src\/db\/prisma\.ts$/, /backend\/src\/config\/env\.ts$/, /backend\/src\/providers\//, /@prisma\/client/, /node_modules\/express\//]) {
+    if (has(bad)) problems.push(`в сборку попал серверный модуль ${bad}`);
+  }
+  if (problems.length) throw new Error("build.mjs: " + problems.join("; "));
+}
 
 copyFileSync(resolve(root, "public", "manifest.webmanifest"), resolve(dist, "manifest.webmanifest"));
 // Версия кэша офлайн-режима берётся из версии приложения и номера сборки: новая сборка всегда обновляет кэш.

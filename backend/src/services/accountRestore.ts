@@ -30,10 +30,9 @@ import type { Prisma } from "@prisma/client";
 //    входят в экспорт (см. accountExport.ts: Semantic Memory можно пересчитать
 //    из текста MemoryItem при наличии ключа Voyage AI, а хранить сырые векторы
 //    в JSON-бэкапе ради экономии места бессмысленно).
-// 6. foodLogEntry.foodItemId ссылается на общий (не пользовательский) справочник
-//    FoodItem — не перемапливаем его id, но проверяем, что такая запись всё ещё
-//    существует в базе: если нет (справочник мог измениться), подставляем null,
-//    иначе восстановление упадёт на внешнем ключе Postgres.
+// 6. Старые копии могут содержать записи питания (foodLogs) и цели по калориям.
+//    Раздела питания в приложении больше нет, поэтому эти поля при восстановлении
+//    просто пропускаются.
 
 type ExportShape = Record<string, unknown>;
 
@@ -96,19 +95,11 @@ export async function restoreUserExport(userId: string, raw: unknown): Promise<R
         create: {
           userId,
           weightGoalKg: p.weightGoalKg ?? null,
-          dailyCalorieTarget: p.dailyCalorieTarget ?? null,
-          proteinTargetG: p.proteinTargetG ?? null,
-          fatTargetG: p.fatTargetG ?? null,
-          carbTargetG: p.carbTargetG ?? null,
           city: p.city ?? null,
           onboardingDone: p.onboardingDone ?? false,
         },
         update: {
           weightGoalKg: p.weightGoalKg ?? null,
-          dailyCalorieTarget: p.dailyCalorieTarget ?? null,
-          proteinTargetG: p.proteinTargetG ?? null,
-          fatTargetG: p.fatTargetG ?? null,
-          carbTargetG: p.carbTargetG ?? null,
           city: p.city ?? null,
           onboardingDone: p.onboardingDone ?? false,
         },
@@ -265,44 +256,6 @@ export async function restoreUserExport(userId: string, raw: unknown): Promise<R
       weightCount++;
     }
     summary.weightLogs = weightCount;
-
-    // --- Еда: foodLog -> entries (entries ссылаются на общий справочник FoodItem) ---
-    let foodLogCount = 0;
-    let foodEntryCount = 0;
-    const haveFood = new Set<string>();
-    for (const x of await tx.foodLog.findMany({ where: { userId }, select: { date: true, rawInput: true } })) haveFood.add(`${iso(x.date)}|${x.rawInput ?? ""}`);
-    for (const f of asArray<any>(data.foodLogs)) {
-      if (haveFood.has(`${iso(f.date)}|${f.rawInput ?? ""}`)) {
-        alreadyPresent++;
-        continue;
-      }
-      const createdLog = await tx.foodLog.create({
-        data: { userId, date: new Date(f.date), rawInput: f.rawInput ?? null },
-      });
-      foodLogCount++;
-      for (const e of asArray<any>(f.entries)) {
-        let foodItemId: string | null = e.foodItemId ?? null;
-        if (foodItemId) {
-          const exists = await tx.foodItem.findUnique({ where: { id: foodItemId }, select: { id: true } });
-          if (!exists) foodItemId = null; // справочник изменился — не роняем restore на FK
-        }
-        await tx.foodLogEntry.create({
-          data: {
-            foodLogId: createdLog.id,
-            foodItemId,
-            nameOverride: e.nameOverride ?? null,
-            grams: e.grams,
-            calories: e.calories,
-            proteinG: e.proteinG,
-            fatG: e.fatG,
-            carbsG: e.carbsG,
-          },
-        });
-        foodEntryCount++;
-      }
-    }
-    summary.foodLogs = foodLogCount;
-    summary.foodLogEntries = foodEntryCount;
 
     // --- Финансы ---
     const accountIdMap = new Map<string, string>();
@@ -503,13 +456,11 @@ export async function restoreUserExport(userId: string, raw: unknown): Promise<R
           date: new Date(s.date),
           tasksCompleted: s.tasksCompleted ?? 0,
           tasksTotal: s.tasksTotal ?? 0,
-          caloriesConsumed: s.caloriesConsumed ?? null,
           directionScore: s.directionScore ?? null,
         },
         update: {
           tasksCompleted: s.tasksCompleted ?? 0,
           tasksTotal: s.tasksTotal ?? 0,
-          caloriesConsumed: s.caloriesConsumed ?? null,
           directionScore: s.directionScore ?? null,
         },
       });

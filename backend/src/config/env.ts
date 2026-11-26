@@ -17,9 +17,6 @@ export const env = {
   databaseUrl: required("DATABASE_URL"),
   jwtSecret: required("JWT_SECRET", "dev-secret-change-me"),
 
-  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
-  telegramWebAppUrl: process.env.TELEGRAM_WEBAPP_URL ?? "",
-
   aiProvider: process.env.AI_PROVIDER ?? "anthropic",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   aiModelCheap: process.env.AI_MODEL_CHEAP ?? "claude-haiku-4-5-20251001",
@@ -58,7 +55,6 @@ export const env = {
 };
 
 export const isAiConfigured = () => Boolean(env.anthropicApiKey);
-export const isBotConfigured = () => Boolean(env.telegramBotToken);
 export const isEmbeddingsConfigured = () => Boolean(env.voyageApiKey);
 export const isTranscriptionConfigured = () => Boolean(env.openaiApiKey);
 export const isGoogleDriveConfigured = () => Boolean(env.googleClientId && env.googleClientSecret && env.googleRedirectUri);

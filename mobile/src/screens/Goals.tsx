@@ -1,3 +1,4 @@
+import { toast } from "../../phone/feedback";
 import { confirmDelete } from "../utils/format";
 import { IconClose } from "../components/Icons";
 import { useEffect, useState } from "react";
@@ -20,9 +21,9 @@ interface Goal {
   stages: Stage[];
 }
 
-export function Goals({ embedded = false }: { embedded?: boolean } = {}) {
+export function Goals({ embedded = false, autoAdd = false }: { embedded?: boolean; autoAdd?: boolean } = {}) {
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(autoAdd);
   const [title, setTitle] = useState("");
   const [reason, setReason] = useState("");
   const [stageInputs, setStageInputs] = useState<Record<string, string>>({});
@@ -43,6 +44,7 @@ export function Goals({ embedded = false }: { embedded?: boolean } = {}) {
     try {
       await api.post("/goals", { title, reason: reason || undefined });
       hapticNotification("success");
+      toast("Цель добавлена");
       setTitle("");
       setReason("");
       setShowForm(false);

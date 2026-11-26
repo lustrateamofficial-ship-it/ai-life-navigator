@@ -14,7 +14,6 @@ export interface JournalProposals {
   ideas: Array<{ content: string }>;
   transactions: Array<{ type: "income" | "expense"; amount: number; category: string; comment?: string }>;
   weight: { weightKg: number } | null;
-  food: Array<{ rawInput: string }>;
 }
 
 export const EMPTY_PROPOSALS: JournalProposals = {
@@ -23,7 +22,6 @@ export const EMPTY_PROPOSALS: JournalProposals = {
   ideas: [],
   transactions: [],
   weight: null,
-  food: [],
 };
 
 const MAX_PER_KIND = 10;
@@ -110,25 +108,17 @@ export function normalizeProposals(raw: unknown, timezone: string, now: Date = n
     weight = { weightKg: Math.round(w.weightKg * 10) / 10 };
   }
 
-  const food: JournalProposals["food"] = [];
-  for (const item of asArray(root.food)) {
-    const r = asRecord(item);
-    const rawInput = cleanText(r?.rawInput);
-    if (rawInput) food.push({ rawInput });
-  }
-
   return {
     tasks: dedupeBy(tasks, (t) => t.title),
     reminders: dedupeBy(reminders, (t) => `${t.title}|${t.triggerAt}`),
     ideas: dedupeBy(ideas, (t) => t.content),
     transactions,
     weight,
-    food: dedupeBy(food, (t) => t.rawInput),
   };
 }
 
 export function countProposals(p: JournalProposals): number {
-  return p.tasks.length + p.reminders.length + p.ideas.length + p.transactions.length + (p.weight ? 1 : 0) + p.food.length;
+  return p.tasks.length + p.reminders.length + p.ideas.length + p.transactions.length + (p.weight ? 1 : 0);
 }
 
 function fmtWhen(iso: string, timezone: string): string {
@@ -147,7 +137,6 @@ export function describeProposals(p: JournalProposals, timezone: string): string
   for (const i of p.ideas) lines.push(`Идея: ${i.content}`);
   for (const t of p.transactions) lines.push(`${t.type === "income" ? "Доход" : "Расход"}: ${t.amount}, ${t.category}`);
   if (p.weight) lines.push(`Вес сегодня: ${p.weight.weightKg} кг`);
-  for (const f of p.food) lines.push(`Приём пищи: ${f.rawInput}`);
   return lines;
 }
 

@@ -25,6 +25,7 @@ print(len(ids), z.read("OEBPS/ch001.xhtml").decode().count("<p>"))
   await p.goto("http://localhost:8099/"); await p.waitForTimeout(500);
   await p.evaluate(() => window.__api("PUT", "/profile", { onboardingDone: true }));
   await p.goto("http://localhost:8099/#/settings"); await p.reload(); await p.waitForTimeout(700);
+  await p.evaluate(() => document.querySelectorAll("details.fold").forEach((d) => { d.open = true; })); await p.waitForTimeout(200);
   const epub = async (name) => { const [dl] = await Promise.all([p.waitForEvent("download"), p.click("button:has-text('Сохранить дневник в EPUB')")]); const path = `/tmp/claude-0/${name}.epub`; await dl.saveAs(path); return path; };
 
   // 1. пустой дневник
@@ -55,6 +56,7 @@ print(len(ids), z.read("OEBPS/ch001.xhtml").decode().count("<p>"))
 
   // 3. копия и возврат внешнего вида
   await p.selectOption("#theme-mode", "dark");
+  await p.evaluate(() => document.querySelectorAll("details.fold").forEach((d) => { d.open = true; })); await p.waitForTimeout(200);
   await p.locator("label.check-row:has-text('Облегчённый режим') input").check();
   const [dl] = await Promise.all([p.waitForEvent("download"), p.click("button:has-text('Скачать файл на телефон')")]);
   await dl.saveAs("/tmp/claude-0/appearance-backup.json");
@@ -73,12 +75,12 @@ print(len(ids), z.read("OEBPS/ch001.xhtml").decode().count("<p>"))
   // 5. Cloudflare: добавление требует Account ID
   await p.evaluate(() => { const a = JSON.parse(localStorage.getItem("navigator:appearance")); a.lite = false; localStorage.setItem("navigator:appearance", JSON.stringify(a)); });
   await p.goto("http://localhost:8099/#/settings"); await p.reload(); await p.waitForTimeout(800);
-  await p.click("button:has-text('Подключить ещё сервис')"); await p.selectOption("#svc-preset", "cloudflare");
-  await p.fill("#svc-key", "cf-token-123"); 
-  ok("поле Account ID показано", (await p.locator("#svc-account").count()) === 1);
-  await p.locator("button.primary", { hasText: /^Добавить$/ }).click(); await p.waitForTimeout(300);
-  ok("без Account ID — понятная ошибка", (await p.innerText("body")).includes("Account ID — 32 символа"));
-  await p.fill("#svc-account", "0123456789abcdef0123456789abcdef"); await p.locator("button.primary", { hasText: /^Добавить$/ }).click(); await p.waitForTimeout(300);
+  await p.evaluate(() => document.querySelectorAll("details.fold").forEach((d) => { d.open = true; })); await p.waitForTimeout(200);
+  await p.fill("#free-cloudflare", "cf-token-123");
+  ok("поле Account ID у Cloudflare показано", (await p.locator("#free-cloudflare-acc").count()) === 1);
+  await p.getByRole("button", { name: "Сохранить ключи" }).click(); await p.waitForTimeout(300);
+  ok("без Account ID — понятная ошибка", (await p.innerText("body")).includes("Account ID состоит из 32"));
+  await p.fill("#free-cloudflare-acc", "0123456789abcdef0123456789abcdef"); await p.getByRole("button", { name: "Сохранить ключи" }).click(); await p.waitForTimeout(300);
   const svc = await p.evaluate(() => JSON.parse(localStorage.getItem("navigator-settings")).services);
   ok("адрес собран с ID: " + (svc && svc[0] && svc[0].baseUrl), svc && svc[0] && svc[0].baseUrl === "https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai/v1");
   console.log("ERRORS", errs);

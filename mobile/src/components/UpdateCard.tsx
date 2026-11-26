@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { CURRENT_VERSION, autoCheck, checkForUpdate, lastCheck, updateRepo, type UpdateInfo } from "../../shim/updater";
-import { isNative, nativeApkCanInstall, nativeApkDownload, nativeApkInstall, nativeApkOpenInstallSettings } from "../../shim/native";
-import { createSnapshot } from "../../shim/safety";
+import { CURRENT_VERSION, autoCheck, checkForUpdate, lastCheck, updateRepo, type UpdateInfo } from "../../phone/updater";
+import { isNative, nativeApkCanInstall, nativeApkDownload, nativeApkInstall, nativeApkOpenInstallSettings } from "../../phone/native";
+import { createSnapshot } from "../../phone/safety";
 import { writeSettings } from "../../shim/env";
 
 type Step = "idle" | "checking" | "downloading" | "installing" | "needPermission";

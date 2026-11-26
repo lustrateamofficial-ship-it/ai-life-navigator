@@ -21,7 +21,7 @@ const { chromium } = require("playwright");
   const add = p.getByRole("button", { name: /Добавить \(/ });
   console.log("add btn", await add.count());
   if (await add.count()) { await add.click(); await p.waitForTimeout(1200); console.log("после добавления:", await txt(500)); }
-  await go("/tasks");
+  await go("/plans?tab=tasks");
   console.log("tasks:", await txt(200));
   await p.getByLabel("отметить выполненной").first().click(); await p.waitForTimeout(600);
   console.log("после отметки:", await txt(250));

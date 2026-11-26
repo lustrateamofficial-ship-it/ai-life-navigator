@@ -16,6 +16,7 @@ const { chromium } = require("playwright");
   console.log("главный экран:", (await txt()).includes("Купить молоко"), (await txt()).startsWith("Сегодня"));
   // шифрование
   await p.goto("http://localhost:8099/#/settings"); await p.waitForTimeout(600);
+  await p.evaluate(() => document.querySelectorAll("details.fold").forEach((d) => { d.open = true; })); await p.waitForTimeout(200);
   await p.locator("#backup-password").fill("секрет123");
   const [dl] = await Promise.all([p.waitForEvent("download").catch(() => null), p.getByText("Скачать файл на телефон").click()]);
   let content = "";

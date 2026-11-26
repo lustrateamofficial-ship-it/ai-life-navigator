@@ -67,8 +67,6 @@ export const env: any = {
   nodeEnv: "production",
   databaseUrl: "",
   jwtSecret: "",
-  telegramBotToken: "",
-  telegramWebAppUrl: "",
   aiProvider: "anthropic",
   get anthropicApiKey() {
     return s().anthropicApiKey ?? "";
@@ -116,7 +114,6 @@ export const env: any = {
 // он использует бесплатный Gemini или Groq (см. providers-anthropic.ts). Поэтому достаточно любого ключа.
 export const isAiConfigured = () =>
   Boolean(env.anthropicApiKey || env.openaiApiKey || env.geminiApiKey || env.deepseekApiKey || env.groqApiKey || (readSettings().services ?? []).some((x) => x.enabled && x.key));
-export const isBotConfigured = () => false;
 export const isEmbeddingsConfigured = () => Boolean(env.voyageApiKey);
 export const isTranscriptionConfigured = () => false;
 export const isGoogleDriveConfigured = () => Boolean(env.googleClientId);

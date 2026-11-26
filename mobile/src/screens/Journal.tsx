@@ -174,9 +174,13 @@ export function Journal() {
 
       <JournalComposer onSaved={() => load(activeQuery, period)} />
 
-      {!lite && <WeekDigest />}
-
-      <WeekSummaryCard />
+      <details className="card fold">
+        <summary>Итоги недели</summary>
+        <div className="fold-body">
+          {!lite && <WeekDigest />}
+          <WeekSummaryCard />
+        </div>
+      </details>
 
       {principles.length > 0 && (
         <details className="card">

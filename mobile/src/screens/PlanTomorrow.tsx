@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { addDays, dayKey, plannedTaskIds, refreshWeather, scheduleFor, setPlannedTaskIds, weatherFor, weatherText, type ScheduleLine } from "../../shim/daily";
-import { syncNativeReminders } from "../../shim/native";
+import { addDays, dayKey, plannedTaskIds, refreshWeather, scheduleFor, setPlannedTaskIds, weatherFor, weatherText, type ScheduleLine } from "../../phone/daily";
+import { syncNativeReminders } from "../../phone/native";
 
 interface TaskRow {
   id: string;

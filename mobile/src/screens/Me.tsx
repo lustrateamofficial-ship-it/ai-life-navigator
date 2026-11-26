@@ -1,6 +1,11 @@
-import { WeightChart } from "../components/WeightChart";
+import { MissionLine } from "../components/MissionLine";
+import { StreakCard } from "../components/StreakCard";
+import { readStreak, streakEvent } from "../../phone/streak";
+import { plural } from "../components/WeekDigest";
+import { WeightSection } from "../components/WeightGoalCard";
 import { BudgetCard } from "../components/BudgetCard";
 import { confirmDelete, formatNumber } from "../utils/format";
+import { FinanceCharts } from "../components/charts";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
@@ -35,10 +40,35 @@ interface FinanceDashboard {
   debts: number;
 }
 
+type Section = "weight" | "streak" | "habits" | "money";
+
+function Ic({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
+
+const MORE: Array<{ to: string; label: string; d: string }> = [
+  { to: "/ideas", label: "Идеи", d: "M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.800 1-2.500A6 6 0 0 0 12 3z" },
+  { to: "/memory", label: "Память", d: "M4 5h16v14H4zM8 9h8M8 13h5" },
+  { to: "/mission", label: "Моя миссия", d: "M5 21V4M5 4h11l-2 4 2 4H5" },
+  { to: "/analytics", label: "Аналитика", d: "M4 20V10M10 20V4M16 20v-7M22 20H2" },
+  { to: "/trash", label: "Корзина", d: "M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" },
+];
+
 export function Me() {
+  const [focusTick, setFocusTick] = useState(0);
+  const [section, setSectionRaw] = useState<Section>("weight");
+  const setSection = (x: Section) => setSectionRaw(x);
+  const [streak, setStreak] = useState(() => readStreak());
+  useEffect(() => {
+    const on = () => setStreak(readStreak());
+    window.addEventListener(streakEvent, on);
+    return () => window.removeEventListener(streakEvent, on);
+  }, []);
   const [weight, setWeight] = useState<WeightData | null>(null);
-  const [weightInput, setWeightInput] = useState("");
-  const [foodInput, setFoodInput] = useState("");
   const [habits, setHabits] = useState<Habit[]>([]);
   const [bankHabits, setBankHabits] = useState<Habit[]>([]);
   const [newHabitTitle, setNewHabitTitle] = useState("");
@@ -48,8 +78,6 @@ export function Me() {
   const [txType, setTxType] = useState<"income" | "expense">("expense");
   const [txAmount, setTxAmount] = useState("");
   const [txCategory, setTxCategory] = useState("");
-  const [savingWeight, setSavingWeight] = useState(false);
-  const [savingFood, setSavingFood] = useState(false);
   const [addingHabit, setAddingHabit] = useState(false);
   const [addingTx, setAddingTx] = useState(false);
 
@@ -69,31 +97,18 @@ export function Me() {
     loadAll();
   }, []);
 
-  async function submitWeight() {
-    const value = parseFloat(weightInput.replace(",", "."));
-    if (!value || savingWeight) return;
-    setSavingWeight(true);
-    try {
-      await api.post("/health/weight", { weightKg: value });
-      hapticNotification("success");
-      setWeightInput("");
-      await loadAll();
-    } finally {
-      setSavingWeight(false);
-    }
-  }
-
-  async function submitFood() {
-    if (!foodInput.trim() || savingFood) return;
-    setSavingFood(true);
-    try {
-      await api.post("/health/food", { text: foodInput });
-      hapticNotification("success");
-      setFoodInput("");
-    } finally {
-      setSavingFood(false);
-    }
-  }
+  // «+» → «Вес» открывает этот экран со ссылкой #/me?weigh=1: показываем вес и ставим курсор в поле.
+  useEffect(() => {
+    const check = () => {
+      if (!window.location.hash.includes("weigh=1")) return;
+      setSection("weight");
+      setFocusTick((t) => t + 1);
+      window.history.replaceState(null, "", "#/me");
+    };
+    check();
+    window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, []);
 
   // Раздел 16: максимум 2 активные привычки одновременно — создание кладёт в "банк",
   // активация переносит оттуда (backend сам отклонит, если слоты заняты).
@@ -205,56 +220,37 @@ export function Me() {
 
   return (
     <div className="screen">
-      <header className="page-header">
-        <h2>Я</h2>
-        <p>Здоровье, привычки и деньги в одном месте</p>
+      <header className="page-header page-header-row">
+        <div>
+          <h2>Я</h2>
+          <p>Вес, серия дней и всё остальное</p>
+        </div>
+        <Link className="icon-btn" to="/settings" aria-label="Настройки">
+          <Ic d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.400 15a1.700 1.700 0 0 0 .3 1.800l.1.1a2 2 0 1 1-2.800 2.800l-.1-.1a1.700 1.700 0 0 0-1.800-.3 1.700 1.700 0 0 0-1 1.500V21a2 2 0 1 1-4 0v-.1a1.700 1.700 0 0 0-1.100-1.500 1.700 1.700 0 0 0-1.800.3l-.1.1a2 2 0 1 1-2.800-2.800l.1-.1a1.700 1.700 0 0 0 .3-1.800 1.700 1.700 0 0 0-1.500-1H3a2 2 0 1 1 0-4h.1a1.700 1.700 0 0 0 1.500-1.100 1.700 1.700 0 0 0-.3-1.800l-.1-.1a2 2 0 1 1 2.800-2.800l.1.1a1.700 1.700 0 0 0 1.800.3H9a1.700 1.700 0 0 0 1-1.500V3a2 2 0 1 1 4 0v.1a1.700 1.700 0 0 0 1 1.500 1.700 1.700 0 0 0 1.800-.3l.1-.1a2 2 0 1 1 2.800 2.800l-.1.1a1.700 1.700 0 0 0-.3 1.800V9a1.700 1.700 0 0 0 1.500 1H21a2 2 0 1 1 0 4h-.1a1.700 1.700 0 0 0-1.500 1z" />
+        </Link>
       </header>
 
-      <div className="card">
-        <div className="card-title">Вес</div>
-        <div className="big-number">{weight?.current ? `${formatNumber(weight.current)} кг` : "—"}</div>
-        <div className="stat-grid mt">
-          <div className="stat">
-            <div className="stat-label">Среднее за 7 дней</div>
-            <div className="stat-value">{weight?.avg7d ? `${formatNumber(weight.avg7d)} кг` : "—"}</div>
-          </div>
-          <div className="stat">
-            <div className="stat-label">Среднее за 30 дней</div>
-            <div className="stat-value">{weight?.avg30d ? `${formatNumber(weight.avg30d)} кг` : "—"}</div>
-          </div>
-        </div>
-        <div className="field-row mt">
-          <input
-            inputMode="decimal"
-            aria-label="Вес в килограммах"
-            placeholder="Вес сегодня, кг"
-            value={weightInput}
-            onChange={(e) => setWeightInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submitWeight()}
-          />
-          <button className="primary" onClick={submitWeight} disabled={savingWeight}>
-            {savingWeight ? "..." : "Записать"}
-          </button>
-        </div>
-        <WeightChart logs={weight?.logs ?? []} />
+      <MissionLine />
+
+      <div className="tile-grid" role="group" aria-label="Раздел">
+        <button className={`tile ${section === "weight" ? "active" : ""}`} aria-pressed={section === "weight"} onClick={() => setSection("weight")}>
+          <Ic d="M4 12h4l2-6 4 12 2-6h4" />
+          <span className="tile-label">Вес</span>
+          <b>{weight?.current ? `${formatNumber(weight.current)} кг` : "—"}</b>
+        </button>
+        <button className={`tile ${section === "streak" ? "active" : ""}`} aria-pressed={section === "streak"} onClick={() => setSection("streak")}>
+          <Ic d="M12 3c1 3 4 4.500 4 8.500a4 4 0 0 1-8 0c0-1.500.5-2.500 1.500-3.500C9.500 10 10 8 12 3z" />
+          <span className="tile-label">Серия</span>
+          <b>{streak > 0 ? `${streak} ${plural(streak, "день", "дня", "дней")}` : "нет"}</b>
+        </button>
       </div>
 
-      <div className="card">
-        <div className="card-title">Питание</div>
-        <div className="field-row">
-          <input
-            aria-label="Что ты съел"
-            placeholder="Что ты съел?"
-            value={foodInput}
-            onChange={(e) => setFoodInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submitFood()}
-          />
-          <button className="primary" onClick={submitFood} disabled={savingFood}>
-            {savingFood ? "..." : "Записать"}
-          </button>
-        </div>
-      </div>
+{section === "streak" && <StreakCard />}
 
+{section === "weight" && <WeightSection weight={weight} onChanged={loadAll} focusTick={focusTick} />}
+
+      {section === "habits" && (
+<>
       <div className="card">
         <div className="card-title">Привычки</div>
         {habits.length === 0 && <p className="empty">Активных привычек нет. Добавь первую ниже.</p>}
@@ -319,7 +315,11 @@ export function Me() {
         </div>
         <p className="small mt">Одновременно можно вести не больше двух привычек: так их легче довести до конца.</p>
       </div>
+</>
+)}
 
+      {section === "money" && (
+<>
       <div className="card">
         <div className="card-title">Финансы</div>
         {finance && (
@@ -343,6 +343,7 @@ export function Me() {
           </div>
         )}
         {finance && finance.debts > 0 && <p className="mt text">Долги всего: {finance.debts}</p>}
+        <FinanceCharts reloadKey={(finance?.income ?? 0) + (finance?.expenses ?? 0)} />
 
         <div className="segmented mt" role="group" aria-label="Тип записи">
           <button aria-pressed={txType === "expense"} onClick={() => setTxType("expense")}>
@@ -369,20 +370,34 @@ export function Me() {
       </div>
 
       <BudgetCard reloadKey={finance?.expenses ?? 0} />
+</>
+)}
 
-      <div className="card">
-        <div className="card-title">Ещё</div>
-        <nav className="link-list">
-          <Link className="link-row" to="/calendar">Расписание</Link>
-          <Link className="link-row" to="/plans?tab=reminders">Напоминания</Link>
-          <Link className="link-row" to="/ideas">Идеи</Link>
-          <Link className="link-row" to="/memory">Память</Link>
-          <Link className="link-row" to="/mission">Моя миссия</Link>
-          <Link className="link-row" to="/analytics">Аналитика</Link>
-          <Link className="link-row" to="/trash">Корзина</Link>
-          <Link className="link-row" to="/settings">Настройки</Link>
-        </nav>
+            <div className="settings-group" style={{ marginTop: 26 }}>
+        <h3>Разделы</h3>
       </div>
+      <nav className="more-grid" aria-label="Другие разделы">
+        <button type="button" className="more-item" onClick={() => { setSection("habits"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+          <span className="sheet-ic">
+            <Ic d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12.500l2.700 2.700L16 9.500" />
+          </span>
+          <span>Привычки</span>
+        </button>
+        <button type="button" className="more-item" onClick={() => { setSection("money"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+          <span className="sheet-ic">
+            <Ic d="M3 7h18v12H3zM3 11h18M16 15h2" />
+          </span>
+          <span>Финансы</span>
+        </button>
+        {MORE.map((m) => (
+          <Link key={m.to} className="more-item" to={m.to}>
+            <span className="sheet-ic">
+              <Ic d={m.d} />
+            </span>
+            <span>{m.label}</span>
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 }

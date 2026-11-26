@@ -55,6 +55,7 @@ const { chromium } = require("playwright");
   await p.reload(); await p.waitForTimeout(800);
   const label = await p.locator("svg[role=img][aria-label^='Вес с']").getAttribute("aria-label").catch(() => null);
   ok("график: рисуется и подписан для чтения с экрана", !!label && label.includes("тренд") && label.includes("Записей: 7"));
+  await p.getByRole("button", { name: /Финансы/ }).click(); await p.waitForTimeout(300);
   ok("бюджет на экране «Я»", (await txt()).includes("Бюджет на месяц"));
   await p.screenshot({ path: "/tmp/claude-0/e2e/nf-me.png", fullPage: true });
 

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { readSettings, writeSettings } from "../../shim/env";
-import { readEvening, writeEvening } from "../../shim/evening";
-import { isNative, nativeAskNotifications, nativeNotificationState, syncNativeReminders } from "../../shim/native";
+import { readEvening, writeEvening } from "../../phone/evening";
+import { isNative, nativeAskNotifications, nativeNotificationState, syncNativeReminders } from "../../phone/native";
 
 const HIDE = "navigator:setup-hidden";
 
@@ -32,11 +32,14 @@ export function SetupCard() {
   const [eveningOn, setEveningOn] = useState(readEvening().enabled);
   const [key, setKey] = useState("");
   const [msg, setMsg] = useState("");
+  const [open, setOpen] = useState(false);
 
   if (notifOk === null) void notifGranted().then(setNotifOk);
 
   const remindersOk = notifOk === true && eveningOn;
   if (hidden || notifOk === null || (keyOk && remindersOk)) return null;
+
+  const todo = [!keyOk ? "ключ ИИ" : "", !remindersOk ? "напоминания" : ""].filter(Boolean).join(" и ");
 
   function saveKey() {
     const k = key.trim();
@@ -88,13 +91,22 @@ export function SetupCard() {
     setHidden(true);
   }
 
+  if (!open) {
+    return (
+      <button type="button" className="card setup-line" id="setup-open" onClick={() => setOpen(true)} aria-expanded={false}>
+        <span><b>Быстрая настройка</b> · осталось: {todo}</span>
+        <span className="setup-go">Открыть</span>
+      </button>
+    );
+  }
+
   return (
     <div className="card">
       <div className="card-title">Быстрая настройка</div>
       {!keyOk && (
         <div style={{ marginBottom: 14 }}>
           <p className="small" style={{ marginBottom: 8 }}>
-            <b>1. ИИ-подсказки.</b> Нужен бесплатный ключ Gemini: без карты и оплаты. Открой страницу, войди в аккаунт Google, создай ключ и вставь его сюда. Другие бесплатные сервисы (Groq, OpenRouter, Cerebras и другие) добавляются в «Настройках», они подстрахуют, если у одного кончится лимит.
+            <b>1. ИИ-подсказки.</b> Нужен бесплатный ключ Gemini: без карты и оплаты. Открой страницу, войди в аккаунт Google, создай ключ и вставь его сюда. Запасные сервисы добавляются в «Настройках».
           </p>
           <button type="button" className="secondary" style={{ width: "100%", marginBottom: 8 }} onClick={() => window.open("https://aistudio.google.com/apikey", "_blank", "noopener")}>
             Получить бесплатный ключ
@@ -116,7 +128,7 @@ export function SetupCard() {
       {!remindersOk && (
         <div style={{ marginBottom: 14 }}>
           <p className="small" style={{ marginBottom: 8 }}>
-            <b>{keyOk ? "1" : "2"}. Напоминания.</b> Приложение напомнит о делах и вечером спросит, как прошёл день.
+            <b>{keyOk ? "1" : "2"}. Напоминания.</b> Приложение напомнит о делах и вечером предложит выбрать задачи на завтра.
             {isNative() ? " Если телефон экономит заряд, разреши приложению работать в фоне." : ""}
           </p>
           <button type="button" className="primary" style={{ width: "100%" }} onClick={enableReminders}>

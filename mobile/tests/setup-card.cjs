@@ -6,6 +6,8 @@ const { chromium } = require("playwright");
   await p.goto("http://localhost:8099/"); await p.waitForTimeout(500);
   await p.evaluate(() => window.__api("PUT", "/profile", { onboardingDone: true })); await p.reload(); await p.waitForTimeout(600);
   console.log("плашка видна:", await p.locator("text=Быстрая настройка").count() > 0);
+  console.log("по умолчанию свёрнута в одну строку:", await p.locator("#setup-open").count() === 1 && await p.locator('input[aria-label="Ключ ИИ"]').count() === 0);
+  await p.click("#setup-open");
   await p.fill('input[aria-label="Ключ ИИ"]', "abc"); await p.click("text=Сохранить ключ");
   console.log("короткий ключ отклонён:", await p.locator("text=слишком коротким").count() > 0);
   await p.fill('input[aria-label="Ключ ИИ"]', "AIzaSyTEST_KEY_1234567890abcdef"); await p.click("text=Сохранить ключ");

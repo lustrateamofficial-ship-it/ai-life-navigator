@@ -12,7 +12,7 @@ export async function buildUserExport(userId: string) {
   // Для пользователя, который явно просил "Портрет по дневнику" как значимую фичу, терять
   // его историю при восстановлении из бэкапа было бы особенно обидно. Теперь действительно всё.
   // БАГ (найден при подготовке восстановления из бэкапа): dailySummaries — тоже
-  // данные пользователя (кэш дневной сводки: выполненные задачи, калории,
+  // данные пользователя (кэш дневной сводки: выполненные задачи,
   // Direction Score), но их не было ни в одном из предыдущих проходов по экспорту.
   // Это не критично (значения пересчитываемы), но раз обещаем "выгружаем всё" —
   // добавляем и их, иначе restore молча потеряет дневную историю сводок.
@@ -24,7 +24,6 @@ export async function buildUserExport(userId: string) {
     tasks,
     habits,
     weightLogs,
-    foodLogs,
     financialAccounts,
     transactions,
     debts,
@@ -52,7 +51,6 @@ export async function buildUserExport(userId: string) {
     prisma.task.findMany({ where: { userId } }),
     prisma.habit.findMany({ where: { userId }, include: { logs: true } }),
     prisma.weightLog.findMany({ where: { userId } }),
-    prisma.foodLog.findMany({ where: { userId }, include: { entries: true } }),
     prisma.financialAccount.findMany({ where: { userId } }),
     prisma.financialTransaction.findMany({ where: { userId } }),
     prisma.debt.findMany({ where: { userId } }),
@@ -87,7 +85,6 @@ export async function buildUserExport(userId: string) {
     tasks,
     habits,
     weightLogs,
-    foodLogs,
     financialAccounts,
     transactions,
     debts,
@@ -117,7 +114,7 @@ export async function buildUserExport(userId: string) {
 // зачем давать ему больше работы, чем нужно).
 export function exportToJsonBuffer(exportData: unknown, pretty = true): Buffer {
   // JSON.stringify не справляется с BigInt без replacer — на будущее, если в экспорт
-  // когда-нибудь попадёт сырое поле вроде telegramId.
+  // когда-нибудь попадёт внутреннее поле вроде telegramId.
   const replacer = (_key: string, value: unknown) => (typeof value === "bigint" ? value.toString() : value);
   const json = JSON.stringify(exportData, replacer, pretty ? 2 : undefined);
   return Buffer.from(json, "utf-8");

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { isNative, nativeAskNotifications, nativeNotificationState } from "../../shim/native";
-import { nativeFolderInfo, nativeForgetFolder, nativePickFolder, nativeQuickNotificationState, nativeSetQuickNotification, type FolderInfo } from "../../shim/nativeExtras";
-import { readAutoBackup, runAutoBackup, writeAutoBackup, type AutoBackupState } from "../../shim/autoBackup";
+import { isNative, nativeAskNotifications, nativeNotificationState } from "../../phone/native";
+import { nativeFolderInfo, nativeForgetFolder, nativePickFolder, nativeQuickNotificationState, nativeSetQuickNotification, type FolderInfo } from "../../phone/nativeExtras";
+import { readAutoBackup, runAutoBackup, writeAutoBackup, type AutoBackupState } from "../../phone/autoBackup";
 
 // Быстрая запись без открытия приложения: плашка в шторке и виджет. Работает без интернета.
 export function QuickNoteCard() {
@@ -44,7 +44,7 @@ export function QuickNoteCard() {
   );
 }
 
-// Автокопия в папку (можно на Google Диске): раз в сутки при открытии приложения.
+// Автокопия в папку (можно на Google Диске): раз в неделю при открытии приложения.
 export function AutoBackupCard() {
   const native = isNative();
   const [s, setS] = useState<AutoBackupState>(readAutoBackup());
@@ -88,7 +88,7 @@ export function AutoBackupCard() {
       ) : (
         <>
           <p className="small" style={{ marginBottom: 10 }}>
-            Раз в сутки при открытии приложения копия данных пишется в выбранную папку. Если выбрать папку на Google Диске, копия окажется в облаке. Хранятся последние 7.
+            Раз в неделю при открытии приложения копия данных пишется в выбранную папку. Если выбрать папку на Google Диске, копия окажется в облаке. Хранятся последние 7 копий (около двух месяцев).
           </p>
           <button className="secondary" style={{ width: "100%" }} onClick={pick}>
             {folder.configured ? `Папка: ${folder.name || "выбрана"}. Выбрать другую` : "Выбрать папку"}

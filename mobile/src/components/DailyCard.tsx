@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { findCity, readDaily, refreshWeather, writeDaily, type DailySettings } from "../../shim/daily";
-import { syncNativeReminders } from "../../shim/native";
+import { findCity, readDaily, refreshWeather, writeDaily, type DailySettings } from "../../phone/daily";
+import { syncNativeReminders } from "../../phone/native";
 
 // Настройки утренней сводки и вечернего «плана на завтра».
 export function DailyCard() {
   const [s, setS] = useState<DailySettings>(readDaily());
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lifeText, setLifeText] = useState(String(s.lifeYears)); // что человек сейчас печатает, пока не закончил
 
   function change(next: DailySettings) {
     setS(next);
@@ -55,6 +56,14 @@ export function DailyCard() {
         <input aria-label="Время вечернего напоминания" id="bedtime-time" type="time" value={s.bedtime.time} onChange={(e) => e.target.value && change({ ...s, bedtime: { ...s.bedtime, time: e.target.value } })} />
       )}
 
+      <label className="check-row" style={{ marginTop: 10 }}>
+        <input type="checkbox" checked={s.weekly.enabled} onChange={(e) => change({ ...s, weekly: { ...s.weekly, enabled: e.target.checked } })} />
+        <span>Итоги недели в воскресенье вечером</span>
+      </label>
+      {s.weekly.enabled && (
+        <input aria-label="Время итогов недели" id="weekly-time" type="time" value={s.weekly.time} onChange={(e) => e.target.value && change({ ...s, weekly: { ...s.weekly, time: e.target.value } })} />
+      )}
+
       <label className="small" htmlFor="daily-city" style={{ display: "block", margin: "12px 0 6px" }}>
         Город для погоды
       </label>
@@ -68,7 +77,7 @@ export function DailyCard() {
 
       <label className="check-row" style={{ marginTop: 12 }}>
         <input type="checkbox" checked={s.showLife} onChange={(e) => change({ ...s, showLife: e.target.checked })} />
-        <span>Показывать «сколько ещё впереди»</span>
+        <span>Показывать в утренней сводке, сколько недель прожито и сколько впереди</span>
       </label>
       {s.showLife && (
         <>
@@ -77,9 +86,25 @@ export function DailyCard() {
           </label>
           <input id="daily-birth" type="date" value={s.birthDate} onChange={(e) => change({ ...s, birthDate: e.target.value })} />
           <label className="small" htmlFor="daily-life" style={{ display: "block", margin: "8px 0 6px" }}>
-            Возраст, до которого рассчитываем (лет)
+            Возраст, до которого рассчитываем (от 30 до 120 лет)
           </label>
-          <input id="daily-life" type="number" min={30} max={120} value={s.lifeYears} onChange={(e) => change({ ...s, lifeYears: Number(e.target.value) || 80 })} />
+          <input
+            id="daily-life"
+            type="number"
+            inputMode="numeric"
+            min={30}
+            max={120}
+            value={lifeText}
+            onChange={(e) => {
+              setLifeText(e.target.value); // можно стирать и печатать заново, поле не подменяется
+              const n = Number(e.target.value);
+              if (e.target.value !== "" && n >= 30 && n <= 120) change({ ...s, lifeYears: n });
+            }}
+            onBlur={() => {
+              const n = Number(lifeText);
+              if (lifeText === "" || !(n >= 30 && n <= 120)) setLifeText(String(s.lifeYears)); // не вышло: вернуть последнее верное
+            }}
+          />
           <p className="small mt">
             Это условный расчёт от выбранного тобой возраста, а не прогноз и не медицинская оценка. Число нужно, чтобы видеть, сколько недель есть на важное. Если оно тревожит, выключи пункт выше.
           </p>

@@ -68,6 +68,7 @@ const fs = require("fs");
   ok("задача создана только после подтверждения (" + before + "→" + after + ")", after === before + 1);
 
   // 4. итоги недели и месяца
+  await p.evaluate(() => document.querySelectorAll("details.fold").forEach((d) => { d.open = true; })); await p.waitForTimeout(200);
   await p.click("button:has-text('Подвести итоги недели')"); await p.waitForTimeout(1200);
   ok("итог недели", (await p.innerText("body")).includes("За неделю ты писал"));
   await p.click("button[aria-pressed='false']:has-text('Месяц')"); await p.waitForTimeout(300);

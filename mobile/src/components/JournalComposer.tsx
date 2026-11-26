@@ -1,7 +1,10 @@
+import { toast } from "../../phone/feedback";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import { hapticNotification, hapticSelection } from "../platform/sdk";
-import { listenOnce, voiceSupported } from "../../shim/nativeExtras";
+import { listenOnce, voiceSupported } from "../../phone/nativeExtras";
+import { aiFailureCount } from "../../phone/aiRouter";
+import { queueAnalysis } from "../../phone/pendingAnalysis";
 
 interface SupportInfo {
   resources: Array<{ label: string; contact: string }>;
@@ -13,7 +16,6 @@ export interface Proposals {
   ideas: Array<{ content: string }>;
   transactions: Array<{ type: "income" | "expense"; amount: number; category: string; comment?: string }>;
   weight: { weightKg: number } | null;
-  food: Array<{ rawInput: string }>;
 }
 
 function fmtDate(iso: string) {
@@ -37,7 +39,6 @@ export function flattenProposals(p: Proposals): Array<{ key: string; icon: strin
     })
   );
   if (p.weight) rows.push({ key: "weight:0", icon: "", label: `Вес сегодня: ${p.weight.weightKg} кг` });
-  p.food.forEach((f, i) => rows.push({ key: `food:${i}`, icon: "", label: `Приём пищи: ${f.rawInput}` }));
   return rows;
 }
 
@@ -49,7 +50,6 @@ export function pickSelected(p: Proposals, selected: Set<string>): Proposals {
     ideas: p.ideas.filter((_, i) => selected.has(`ideas:${i}`)),
     transactions: p.transactions.filter((_, i) => selected.has(`transactions:${i}`)),
     weight: p.weight && selected.has("weight:0") ? p.weight : null,
-    food: p.food.filter((_, i) => selected.has(`food:${i}`)),
   };
 }
 
@@ -101,6 +101,7 @@ export function JournalComposer({ onSaved, placeholder, draft, onDraftUsed }: { 
     try {
       const entry = await api.post<{ id: string; support: SupportInfo | null }>("/journal", { content: text, private: privateEntry });
       hapticNotification("success");
+      toast("Запись сохранена");
       setText("");
       onSaved?.();
 
@@ -113,17 +114,26 @@ export function JournalComposer({ onSaved, placeholder, draft, onDraftUsed }: { 
       // Запись уже сохранена. Разбор на задачи/траты — необязательное дополнение: если он
       // не получился, запись остаётся, а пользователь просто не видит предложений.
       if (!privateEntry && typeof navigator !== "undefined" && navigator.onLine === false) {
-        setNote("Запись сохранена на телефоне. Без интернета ИИ ничего не разбирает. Позже нажми «В задачи» у записи в дневнике.");
+        queueAnalysis(entry.id, text);
+        setNote("Запись сохранена на телефоне. Без интернета ИИ ничего не разбирает: разберу, когда появится связь, и покажу предложения на главном экране.");
       } else if (!privateEntry) {
+        const failedBefore = aiFailureCount();
         try {
           const res = await api.post<{ aiAvailable: boolean; proposals: Proposals }>(`/journal/${entry.id}/analyze`);
           const rows = flattenProposals(res.proposals);
           if (rows.length > 0) {
             setReview({ entryId: entry.id, proposals: res.proposals });
             setSelected(new Set(rows.map((r) => r.key)));
+          } else if (aiFailureCount() > failedBefore) {
+            // все сервисы не ответили (лимит или сбой): запись цела, разбор доделается сам позже
+            queueAnalysis(entry.id, text);
+            setNote("Запись сохранена. ИИ сейчас недоступен (лимит или сбой), разберу позже сам и покажу предложения на главном экране.");
           }
         } catch {
-          // тихо: запись сохранена, предложения просто не показываем
+          if (aiFailureCount() > failedBefore) {
+            queueAnalysis(entry.id, text);
+            setNote("Запись сохранена. ИИ сейчас недоступен, разберу позже сам и покажу предложения на главном экране.");
+          }
         }
       }
     } finally {

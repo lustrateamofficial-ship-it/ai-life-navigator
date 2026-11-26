@@ -13,13 +13,13 @@ describe("computeNextTrigger", () => {
   });
 
   it("monthly: сдвигает на календарный месяц", () => {
-    const next = computeNextTrigger(new Date("2026-03-10T09:00:00.000Z"), "monthly");
-    expect(next.toISOString()).toBe("2026-04-10T09:00:00.000Z");
+    const next = computeNextTrigger(new Date(2026, 2, 10, 9, 0), "monthly");
+    expect([next.getFullYear(), next.getMonth(), next.getDate(), next.getHours()]).toEqual([2026, 3, 10, 9]);
   });
 
   it("monthly: корректно переходит через границу года", () => {
-    const next = computeNextTrigger(new Date("2026-12-10T09:00:00.000Z"), "monthly");
-    expect(next.toISOString()).toBe("2027-01-10T09:00:00.000Z");
+    const next = computeNextTrigger(new Date(2026, 11, 10, 9, 0), "monthly");
+    expect([next.getFullYear(), next.getMonth(), next.getDate(), next.getHours()]).toEqual([2027, 0, 10, 9]);
   });
 
   it("monthly: 31 января переходит на конец февраля, а не на 3 марта", () => {

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { addDays, buildBrief, lifeLeftText, readDaily, refreshWeather, weatherText, weightText, type DayBrief as Brief } from "../../shim/daily";
+import { addDays, buildBrief, LIFE_HINT, lifeLeftText, readDaily, refreshWeather, weatherText, weightText, type DayBrief as Brief } from "../../phone/daily";
 
 // Сводка на главном экране: утром и днём показывает сегодняшний день, с вечера (после 18:00) предлагает план на завтра.
-export function DayBrief() {
+export function DayBrief({ showTasks = true }: { showTasks?: boolean } = {}) {
   const [brief, setBrief] = useState<Brief | null>(null);
   const evening = new Date().getHours() >= 18;
 
@@ -18,7 +18,8 @@ export function DayBrief() {
 
   if (!brief) return null;
   const s = readDaily();
-  const empty = brief.tasks.length === 0 && brief.schedule.length === 0;
+  const tasks = showTasks ? brief.tasks : []; // если рядом блок «Что полезно сейчас», задачи не дублируем
+  const empty = tasks.length === 0 && brief.schedule.length === 0;
 
   if (evening) {
     return (
@@ -40,13 +41,13 @@ export function DayBrief() {
       <div className="card-title">Сегодня</div>
       {brief.weather && <p>Погода: {weatherText(brief.weather)}</p>}
       {brief.weight && <p className="small">{weightText(brief.weight)}</p>}
-      {brief.life && <p className="small">{lifeLeftText(brief.life)}</p>}
+      {brief.life ? <p className="small">{lifeLeftText(brief.life)}</p> : s.showLife && !s.birthDate ? <p className="small">{LIFE_HINT}</p> : null}
       {!s.city && <p className="small">Чтобы здесь была погода, укажи город в Настройках, раздел «Утро и вечер».</p>}
-      {brief.tasks.length > 0 && (
+      {tasks.length > 0 && (
         <>
           <div className="small mt">Главное на день</div>
           <ol style={{ margin: "4px 0 0 18px", padding: 0 }}>
-            {brief.tasks.map((t) => (
+            {tasks.map((t) => (
               <li key={t.id}>{t.title}</li>
             ))}
           </ol>

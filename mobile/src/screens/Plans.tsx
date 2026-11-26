@@ -1,22 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Goals } from "./Goals";
 import { Tasks } from "./Tasks";
 import { Reminders } from "./Reminders";
+import { Calendar } from "./Calendar";
 
-// Один экран «Планы»: цели, задачи и напоминания — три вкладки вместо трёх разделов.
+// Один экран «Планы»: задачи, цели, напоминания и расписание — вкладки одного раздела.
 // Вкладка хранится в адресе (?tab=goals), поэтому ссылки и кнопка «назад» работают предсказуемо.
 const TABS = [
   { id: "tasks", label: "Задачи" },
   { id: "goals", label: "Цели" },
   { id: "reminders", label: "Напоминания" },
+  { id: "calendar", label: "Расписание" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
 export function Plans() {
   const [params, setParams] = useSearchParams();
   const fromUrl = params.get("tab");
+  const [autoAdd] = useState(params.get("add") === "1"); // пришли из «+»: сразу открыть форму добавления
   const [tab, setTab] = useState<TabId>(TABS.some((t) => t.id === fromUrl) ? (fromUrl as TabId) : "tasks");
+
+  // Адрес изменили снаружи (ссылка, «назад»): вкладка следует за ним.
+  useEffect(() => {
+    if (TABS.some((t) => t.id === fromUrl)) setTab(fromUrl as TabId);
+  }, [fromUrl]);
 
   function pick(id: TabId) {
     setTab(id);
@@ -35,9 +43,10 @@ export function Plans() {
           </button>
         ))}
       </div>
-      {tab === "tasks" && <Tasks embedded />}
-      {tab === "goals" && <Goals embedded />}
-      {tab === "reminders" && <Reminders embedded />}
+      {tab === "tasks" && <Tasks embedded autoAdd={autoAdd} />}
+      {tab === "goals" && <Goals embedded autoAdd={autoAdd} />}
+      {tab === "reminders" && <Reminders embedded autoAdd={autoAdd} />}
+      {tab === "calendar" && <Calendar embedded />}
     </div>
   );
 }

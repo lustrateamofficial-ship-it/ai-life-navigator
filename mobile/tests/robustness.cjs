@@ -12,7 +12,7 @@ const { chromium } = require("playwright");
     const fakeId = "00000000-0000-4000-8000-000000000000";
     const bodies = [undefined, {}, { title: "" }, { content: "" }, { title: 5 }, { amount: "abc" }, { date: "не дата" }, null, [], "строка"];
     const paths = [];
-    for (const base of ["goals","tasks","habits","calendar","reminders","ideas","memory","journal","finance/income","finance/expenses","finance/debts","finance/savings","health/weight","health/food","mission","profile","mood","account","home/observation","home/week-summary","home/goal-suggestions","ai/chat","ai/next-action","ai/analyze","portrait/generate","simulation/future","analytics/snapshot","week","week/earlier"]) paths.push(base);
+    for (const base of ["goals","tasks","habits","calendar","reminders","ideas","memory","journal","finance/income","finance/expenses","finance/debts","finance/savings","health/weight","health/food","mission","profile","mood","account","home/observation","home/week-summary","home/goal-suggestions","ai/chat","ai/next-action","ai/analyze","portrait/generate","analytics/snapshot","week","week/earlier"]) paths.push(base);
     for (const base of ["goals","tasks","habits","calendar","reminders","ideas","memory","journal","finance/transactions","finance/debts","finance/savings"]) { paths.push(base + "/" + fakeId); paths.push(base + "/not-a-uuid"); }
     for (const path of paths) for (const method of ["GET","POST","PUT","DELETE"]) for (const body of bodies) {
       try { const r = await a(method, "/" + path, body); if (r.status >= 500) bad.push([method, path, JSON.stringify(body)?.slice(0, 30), r.status, JSON.stringify(r.body)?.slice(0, 80)]); }

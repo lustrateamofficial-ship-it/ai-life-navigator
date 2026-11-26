@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { AddSheet } from "./AddSheet";
 
 // Раздел 6: главная нижняя навигация — ровно 5 пунктов, не выводить 10-12 разделов на главный экран.
 // Дневник — основа приложения, поэтому у него своё место в навигации; «Аналитика» переехала
@@ -46,33 +48,34 @@ const ITEMS = [
   { to: "/me", icon: "me", label: "Я" },
 ];
 
-export function BottomNav() {
-  
-  const items = ITEMS;
+function Item({ item }: { item: (typeof ITEMS)[number] }) {
   return (
-    <nav className="bottom-nav" aria-label="Основная навигация">
-      {items.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.to === "/"}
-          className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
-        >
-          <svg
-            className="nav-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            {ICONS[item.icon]}
+    <NavLink to={item.to} end={item.to === "/"} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
+      <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {ICONS[item.icon]}
+      </svg>
+      <span>{item.label}</span>
+    </NavLink>
+  );
+}
+
+// Четыре раздела и по центру кнопка «+» для быстрого добавления.
+export function BottomNav() {
+  const [adding, setAdding] = useState(false);
+  return (
+    <>
+      <nav className="bottom-nav" aria-label="Основная навигация">
+        <Item item={ITEMS[0]!} />
+        <Item item={ITEMS[1]!} />
+        <button className="nav-fab" aria-label="Создать" aria-haspopup="dialog" onClick={() => setAdding(true)}>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
           </svg>
-          <span>{item.label}</span>
-        </NavLink>
-      ))}
-    </nav>
+        </button>
+        <Item item={ITEMS[2]!} />
+        <Item item={ITEMS[3]!} />
+      </nav>
+      {adding && <AddSheet onClose={() => setAdding(false)} />}
+    </>
   );
 }

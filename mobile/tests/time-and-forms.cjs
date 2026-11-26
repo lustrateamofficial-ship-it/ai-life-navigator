@@ -46,14 +46,14 @@ const BAD = [];
     ["goals", "Добавить", async () => { await p.click("text=+ Новая цель"); await p.fill('input[placeholder="Название цели"]', "дубль-цель"); }, "/goals", "goals"],
   ];
   for (const [route, label, fill, path, key] of forms) {
-    await p.goto("http://localhost:8099/#/" + route); await p.reload(); await p.waitForTimeout(500);
+    await p.goto("http://localhost:8099/#/plans?tab=" + route); await p.reload(); await p.waitForTimeout(500);
     const before = await count(path, key); await fill(); const ok = await tripleClick(route === "goals" ? "Создать" : label); await p.waitForTimeout(700);
     const after = await count(path, key); console.log(`${route}: тройное нажатие «${label}» → новых: ${after - before}${ok ? "" : " (кнопка не найдена)"}`);
     if (after - before > 1) BAD.push(`дубли в ${route}: ${after - before}`);
   }
   // 5. кнопка «Назад»: переходы по вкладкам и возврат
   await p.goto("http://localhost:8099/#/"); await p.waitForTimeout(300);
-  for (const r of ["journal", "tasks", "me", "settings"]) { await p.goto("http://localhost:8099/#/" + r); await p.waitForTimeout(150); }
+  for (const r of ["journal", "plans?tab=tasks", "me", "settings"]) { await p.goto("http://localhost:8099/#/" + r); await p.waitForTimeout(150); }
   const trail = [];
   for (let i = 0; i < 4; i++) { await p.goBack(); await p.waitForTimeout(250); trail.push(await p.evaluate(() => location.hash)); }
   console.log("назад по истории:", trail.join(" ← "));

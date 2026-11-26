@@ -5,10 +5,11 @@ import { flattenProposals, pickSelected, type Proposals } from "./JournalCompose
 
 // Кнопка «В задачи» у старой записи: ИИ ищет в тексте дела, напоминания, траты и предлагает их,
 // а человек отмечает нужное. Пока не нажато «Добавить», ничего не создаётся.
-export function EntryToTasks({ entryId, onDone }: { entryId: string; onDone?: () => void }) {
-  const [state, setState] = useState<"idle" | "loading" | "review" | "empty" | "error" | "done">("idle");
-  const [proposals, setProposals] = useState<Proposals | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+// initial: предложения, подготовленные заранее (отложенный разбор): сразу показываются на подтверждение.
+export function EntryToTasks({ entryId, onDone, initial, onDismiss }: { entryId: string; onDone?: () => void; initial?: Proposals; onDismiss?: () => void }) {
+  const [state, setState] = useState<"idle" | "loading" | "review" | "empty" | "error" | "done">(initial ? "review" : "idle");
+  const [proposals, setProposals] = useState<Proposals | null>(initial ?? null);
+  const [selected, setSelected] = useState<Set<string>>(new Set(initial ? flattenProposals(initial).map((r) => r.key) : []));
   const [count, setCount] = useState(0);
 
   async function find() {
@@ -82,7 +83,7 @@ export function EntryToTasks({ entryId, onDone }: { entryId: string; onDone?: ()
           </label>
         ))}
       <div className="actions">
-        <button className="secondary" onClick={() => setState("idle")}>Не нужно</button>
+        <button className="secondary" onClick={() => (onDismiss ? onDismiss() : setState("idle"))}>Не нужно</button>
         <button className="primary" onClick={add} disabled={selected.size === 0}>Добавить ({selected.size})</button>
       </div>
     </div>

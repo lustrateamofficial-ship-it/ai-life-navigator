@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { REMINDER_EVENT } from "../../shim/reminderRunner";
+import { REMINDER_EVENT } from "../../phone/reminderRunner";
 import { hapticNotification } from "../platform/sdk";
 
 // Плашка сверху: показывается, когда сработало напоминание, а приложение открыто.

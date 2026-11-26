@@ -1,0 +1,28 @@
+# Полные браузерные проверки приложения (около 15 минут). Запускаются при изменениях и вручную: вкладка Actions → «Проверки» → Run workflow.
+# Релиз apk от них не зависит: быстрые тесты в workflow «Сборка Android» останавливают выпуск, а эти показывают красный крест, если что-то сломалось.
+name: Проверки
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["mobile/**", "backend/src/**"]
+  push:
+    paths: ["mobile/**", "backend/src/**", ".github/workflows/checks.yml"]
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+      - run: npm run build
+      - run: node tests/run-all.mjs

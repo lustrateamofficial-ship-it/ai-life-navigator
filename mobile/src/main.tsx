@@ -1,15 +1,21 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
-import { installErrorLog } from "../shim/errorLog";
-import { startReminderRunner } from "../shim/reminderRunner";
-import { startAppearance } from "../shim/appearance";
-import { startQuickNotes } from "../shim/quickNotes";
-import { bindNotificationTaps } from "../shim/native";
-import { startAutoBackup } from "../shim/autoBackup";
-import { localRequest } from "../shim/server";
-import * as safety from "../shim/safety";
-import * as updater from "../shim/updater";
+import { installErrorLog } from "../phone/errorLog";
+import { startReminderRunner } from "../phone/reminderRunner";
+import { startAppearance } from "../phone/appearance";
+import { startQuickNotes } from "../phone/quickNotes";
+import { bindNotificationTaps } from "../phone/native";
+import { startPendingAnalysis } from "../phone/pendingAnalysis";
+import { startAutoBackup } from "../phone/autoBackup";
+import { localRequest, refreshTimezone, ready } from "../shim/server";
+import * as streak from "../phone/streak";
+import { backfillStreak, streakEvent } from "../phone/streak";
+import { prisma } from "../shim/prisma";
+import * as safety from "../phone/safety";
+import * as updater from "../phone/updater";
+import * as daily from "../phone/daily";
+import * as recurrence from "../phone/recurrence";
 import "./styles.css";
 
 // Серверная логика местами использует Buffer; на телефоне нужна только его простая часть.
@@ -26,7 +32,18 @@ startReminderRunner();
 startAppearance();
 startQuickNotes();
 bindNotificationTaps();
+startPendingAnalysis();
 startAutoBackup();
+
+// Один раз заполняем прошлое серии по уже выполненным задачам.
+void ready().then(async () => {
+  if ((await backfillStreak()) > 0) window.dispatchEvent(new Event(streakEvent));
+});
+
+// Вернулись в приложение после поездки: подхватываем новый часовой пояс телефона.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") void refreshTimezone();
+});
 
 // Просим браузер не удалять записи при нехватке места на телефоне (в приложении для Android это не нужно).
 try {
@@ -41,6 +58,10 @@ try {
     (globalThis as any).__api = localRequest;
     (globalThis as any).__safety = safety; // проверки обновления данных
     (globalThis as any).__updater = updater;
+    (globalThis as any).__daily = daily;
+    (globalThis as any).__recurrence = recurrence;
+    (globalThis as any).__streak = streak;
+    (globalThis as any).__prisma = prisma;
   }
 } catch {
   /* хранилище недоступно: отладка не нужна */

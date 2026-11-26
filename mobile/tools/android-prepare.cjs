@@ -9,7 +9,7 @@ const manifestPath = path.join(androidDir, "app/src/main/AndroidManifest.xml");
 const resDir = path.join(androidDir, "app/src/main/res");
 
 let xml = fs.readFileSync(manifestPath, "utf8");
-const perms = ["POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "RECEIVE_BOOT_COMPLETED", "USE_BIOMETRIC", "REQUEST_INSTALL_PACKAGES"];
+const perms = ["POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "RECEIVE_BOOT_COMPLETED", "USE_BIOMETRIC", "REQUEST_INSTALL_PACKAGES", "VIBRATE"];
 for (const p of perms) {
   const tag = `<uses-permission android:name="android.permission.${p}" />`;
   if (!xml.includes(`android.permission.${p}"`)) xml = xml.replace("</manifest>", `    ${tag}\n</manifest>`);

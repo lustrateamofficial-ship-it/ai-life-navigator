@@ -4,7 +4,7 @@
 // (daily/weekly/monthly) должны сами сдвигать triggerAt на следующий момент после
 // срабатывания; "once" — не повторяется (обрабатывается отдельно в scheduler.ts:
 // одноразовое напоминание деактивируется, а не пересчитывается).
-export function computeNextTrigger(current: Date, recurrence: string): Date {
+export function computeNextTrigger(current: Date, recurrence: string, anchorDay?: number): Date {
   const next = new Date(current);
   if (recurrence === "daily") next.setDate(next.getDate() + 1);
   else if (recurrence === "weekly") next.setDate(next.getDate() + 7);
@@ -19,8 +19,8 @@ export function computeNextTrigger(current: Date, recurrence: string): Date {
   }
   else if (recurrence === "monthly") {
     // 31 января + месяц раньше давало 3 марта (февраль пропускался). Теперь день не выходит за конец месяца.
-    // Ограничение: после короткого месяца день остаётся меньшим (28 февраля → 28 марта), потому что исходное число здесь неизвестно.
-    const day = next.getDate();
+    // Исходное число (anchorDay) передаёт вызывающий код, поэтому 31 января → 28 февраля → 31 марта → 30 апреля.
+    const day = anchorDay ?? next.getDate();
     next.setDate(1);
     next.setMonth(next.getMonth() + 1);
     const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();

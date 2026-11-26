@@ -9,7 +9,7 @@ const { chromium } = require("playwright");
   const txt = async () => (await p.innerText("body")).replace(/\n+/g, " | ");
   await p.goto("http://localhost:8099/"); await p.waitForTimeout(600);
   await p.evaluate(async () => { const a = window.__api; await a("PUT", "/profile", { onboardingDone: true }); await a("POST", "/tasks", { title: "Старое название" }); await a("POST", "/goals", { title: "Моя цель" }); await a("POST", "/journal", { content: "тест", private: false }); });
-  await p.goto("http://localhost:8099/#/tasks"); await p.reload(); await p.waitForTimeout(800);
+  await p.goto("http://localhost:8099/#/plans?tab=tasks"); await p.reload(); await p.waitForTimeout(800);
   // правка
   await p.getByLabel("изменить").first().click();
   await p.getByLabel("Название задачи").fill("Новое название"); await p.getByRole("button", { name: "Готово" }).click(); await p.waitForTimeout(600);
@@ -21,7 +21,7 @@ const { chromium } = require("playwright");
   await p.getByLabel("удалить").first().click(); await p.waitForTimeout(600);
   console.log("после согласия удалена:", !(await txt()).includes("Новое название"));
   // цель
-  await p.goto("http://localhost:8099/#/goals"); await p.waitForTimeout(700);
+  await p.goto("http://localhost:8099/#/plans?tab=goals"); await p.waitForTimeout(700);
   await p.getByLabel("удалить цель").click(); await p.waitForTimeout(600);
   console.log("цель удалена:", !(await txt()).includes("Моя цель"));
   // запись дневника

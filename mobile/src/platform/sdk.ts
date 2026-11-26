@@ -1,22 +1,16 @@
-import { applyAppearance } from "../../shim/appearance";
+import { applyAppearance } from "../../phone/appearance";
+import { hapticsOn } from "../../phone/feedback";
 
 // Платформенные возможности телефона. Имя файла осталось прежним, чтобы экраны не менять:
 // раньше здесь был Telegram, теперь — вибрация, системная тема и биометрия самого Android.
 
-export function getTelegramWebApp() {
-  return null;
-}
-
-// Тема и цвет системной панели теперь ведёт shim/appearance (системная, светлая, тёмная, по расписанию).
+// Тема и цвет системной панели теперь ведёт phone/appearance (системная, светлая, тёмная, по расписанию).
 export function initTelegramApp() {
   applyAppearance();
 }
 
-export function getInitData(): string {
-  return "";
-}
-
 function vibrate(ms: number | number[]) {
+  if (!hapticsOn()) return;
   try {
     navigator.vibrate?.(ms);
   } catch {
@@ -43,7 +37,7 @@ export function openExternalLink(url: string) {
 // ── Блокировка по отпечатку или лицу (WebAuthn: системное окно подтверждения Android) ──
 // Это замок на экране приложения: он не шифрует данные, но не даёт открыть дневник постороннему.
 
-import { isNative, nativeBiometricAvailable, nativeBiometricAuth } from "../../shim/native";
+import { isNative, nativeBiometricAvailable, nativeBiometricAuth } from "../../phone/native";
 
 const CRED_KEY = "navigator:webauthn-credential";
 
