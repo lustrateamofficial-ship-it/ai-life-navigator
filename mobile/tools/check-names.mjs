@@ -26,7 +26,11 @@ const r = spawnSync(
   [tsc, "--noEmit", "--jsx", "react-jsx", "--target", "es2022", "--module", "esnext", "--moduleResolution", "bundler", "--skipLibCheck", "--lib", "es2022,dom,dom.iterable", "src/main.tsx"],
   { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
 );
-const bad = (r.stdout + r.stderr).split("\n").filter((l) => /error TS(2304|2552|2305|2724|2614):/.test(l));
+// Клиент базы (@prisma/client) создаётся командой prisma generate, которой в проверке нет, а в приложении база подменена:
+// поэтому его имена здесь не проверяются.
+const bad = (r.stdout + r.stderr)
+  .split("\n")
+  .filter((l) => /error TS(2304|2552|2305|2724|2614):/.test(l) && !l.includes("@prisma/client"));
 if (bad.length) {
   console.error("Найдены необъявленные имена или неверные импорты:\n" + bad.join("\n"));
   process.exit(1);

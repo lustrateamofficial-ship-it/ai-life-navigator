@@ -1,6 +1,6 @@
 {
   "name": "navigator-zhizni-phone",
-  "version": "1.32.0",
+  "version": "1.32.1",
   "private": true,
   "description": "Навигатор Жизни: приложение на телефон (данные хранятся на устройстве)",
   "scripts": {
