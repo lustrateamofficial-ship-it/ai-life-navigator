@@ -4,6 +4,9 @@ const { chromium } = require("playwright");
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, serviceWorkers: "block" });
   await ctx.addInitScript(() => localStorage.setItem("navigator-debug", "1"));
+  // «Сегодня» после 18:00 показывает вечерний вид без строки про недели жизни: фиксируем полдень, чтобы тест не зависел от часа запуска
+  const noon = new Date(); noon.setHours(12, 0, 0, 0);
+  await ctx.clock.setFixedTime(noon);
   const p = await ctx.newPage(); const errs = [];
   p.on("pageerror", (e) => errs.push(e.message));
   const ok = (n, v) => console.log((v ? "ДА  " : "НЕТ ") + n);

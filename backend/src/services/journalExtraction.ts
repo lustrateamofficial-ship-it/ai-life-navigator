@@ -139,3 +139,13 @@ export function describeProposals(p: JournalProposals, timezone: string): string
   if (p.weight) lines.push(`Вес сегодня: ${p.weight.weightKg} кг`);
   return lines;
 }
+
+// Устарело: личных записей в приложении больше нет, и эта функция нигде не вызывается.
+// Оставлена только потому, что на неё ссылается старый тест журнала; можно удалить вместе с этим тестом.
+export function parsePrivatePrefix(text: string): { text: string; isPrivate: boolean } {
+  const m = /^\s*(личное|личная запись|личная)\s*[:\-—–]\s*/i.exec(text);
+  if (!m) return { text, isPrivate: false };
+  const rest = text.slice(m[0].length).trim();
+  // «Личное:» без текста не считаем префиксом, иначе запись окажется пустой.
+  return rest ? { text: rest, isPrivate: true } : { text, isPrivate: false };
+}
