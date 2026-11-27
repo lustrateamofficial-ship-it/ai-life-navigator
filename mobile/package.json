@@ -1,6 +1,6 @@
 {
   "name": "navigator-zhizni-phone",
-  "version": "1.34.0",
+  "version": "1.34.1",
   "private": true,
   "description": "Ego: приложение на телефон (данные хранятся на устройстве)",
   "scripts": {

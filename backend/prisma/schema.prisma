@@ -379,6 +379,7 @@ model Reminder {
   triggerAt   DateTime
   recurrence  ReminderRecurrence @default(once)
   active      Boolean            @default(true)
+  taskId      String? // напоминание, созданное из задачи («Напомнить» в задаче)
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 }
