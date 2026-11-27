@@ -1,5 +1,7 @@
 import { confirmDelete } from "../utils/format";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { AutoTextarea } from "../components/AutoTextarea";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { TileEditPage, EditButton, useTiles } from "../components/TileEditPage";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { hapticImpact, hapticNotification } from "../platform/sdk";
@@ -20,7 +22,6 @@ interface JournalEntry {
   content: string;
   createdAt: string;
   extractedPrinciples: Principle[];
-  isPrivate?: boolean;
 }
 
 interface JournalPage {
@@ -57,6 +58,8 @@ function dayLabel(iso: string) {
 // Дневник: свободные записи — мысли, планы, траты, качества, к которым хочешь стремиться.
 // Записи листаются по дням («Показать ещё») и ищутся по словам.
 export function Journal() {
+  const [editing, setEditing] = useState(false);
+  const [tiles] = useTiles("journal");
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [principles, setPrinciples] = useState<Principle[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -162,18 +165,12 @@ export function Journal() {
 
   let lastDay = "";
 
-  return (
-    <div className="screen">
-      <header className="page-header">
-        <h2>Дневник</h2>
-        <p>
-          Пиши как в обычный дневник. ИИ предложит, что добавить в задачи и учёт, а ты подтвердишь.{" "}
-          <Link to="/portrait">Портрет по дневнику</Link>
-        </p>
-      </header>
+  if (editing) return <TileEditPage screen="journal" onDone={() => setEditing(false)} />;
 
-      <JournalComposer onSaved={() => load(activeQuery, period)} />
-
+  // Плитки экрана: показываются в порядке из настроек, выключенные пропускаются. Сами записи ниже есть всегда.
+  const blocks: Record<string, JSX.Element | null> = {
+    write: <JournalComposer onSaved={() => load(activeQuery, period)} />,
+    week: (
       <details className="card fold">
         <summary>Итоги недели</summary>
         <div className="fold-body">
@@ -181,8 +178,9 @@ export function Journal() {
           <WeekSummaryCard />
         </div>
       </details>
-
-      {principles.length > 0 && (
+    ),
+    principles:
+      principles.length > 0 ? (
         <details className="card">
           <summary>Мои принципы ({principles.length})</summary>
           <div style={{ marginTop: 10 }}>
@@ -193,23 +191,46 @@ export function Journal() {
             ))}
           </div>
         </details>
-      )}
+      ) : null,
+    search: (
+      <>
+        <input
+          type="search"
+          aria-label="Поиск по дневнику"
+          placeholder="Поиск по записям"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ marginBottom: 12 }}
+        />
+        <div className="chips" role="group" aria-label="Период">
+          {PERIODS.map((p) => (
+            <button key={p.id} className="chip" aria-pressed={period === p.id} onClick={() => setPeriod(p.id)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </>
+    ),
+  };
 
-      <input
-        type="search"
-        aria-label="Поиск по дневнику"
-        placeholder="Поиск по записям"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        style={{ marginBottom: 12 }}
-      />
-      <div className="chips" role="group" aria-label="Период">
-        {PERIODS.map((p) => (
-          <button key={p.id} className="chip" aria-pressed={period === p.id} onClick={() => setPeriod(p.id)}>
-            {p.label}
-          </button>
-        ))}
-      </div>
+  return (
+    <div className="screen">
+      <header className="page-header page-header-row">
+        <div>
+          <h2>Дневник</h2>
+          <p>
+            Пиши как в обычный дневник. ИИ предложит, что добавить в задачи и учёт, а ты подтвердишь.{" "}
+            <Link to="/portrait">Портрет по дневнику</Link>
+          </p>
+        </div>
+        <div className="header-actions">
+          <EditButton onClick={() => setEditing(true)} />
+        </div>
+      </header>
+
+      {tiles.map((id) => (
+        <Fragment key={id}>{blocks[id]}</Fragment>
+      ))}
       {activeQuery && !loading && !failed && <p className="small" role="status" style={{ marginBottom: 8 }}>Найдено записей: {entries.length}{hasMore ? " и больше" : ""}</p>}
 
       {loading && entries.length === 0 && <p>Загрузка...</p>}
@@ -232,7 +253,7 @@ export function Journal() {
             <div className="card">
               {editingId === entry.id ? (
                 <>
-                  <textarea rows={5} value={editText} onChange={(e) => setEditText(e.target.value)} style={{ marginBottom: 8 }} />
+                  <AutoTextarea minRows={5} aria-label="Текст записи" value={editText} onChange={(e) => setEditText(e.target.value)} style={{ marginBottom: 8 }} />
                   <div className="actions">
                     <button className="secondary" onClick={cancelEdit}>
                       Отмена
@@ -258,10 +279,9 @@ export function Journal() {
                     </div>
                   </div>
                   <p style={{ marginTop: 8, fontSize: 12 }}>
-                    {entry.isPrivate ? "Личная · " : ""}
                     {new Date(entry.createdAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
                   </p>
-                  {!entry.isPrivate && <EntryToTasks entryId={entry.id} />}
+                  <EntryToTasks entryId={entry.id} />
                 </>
               )}
             </div>

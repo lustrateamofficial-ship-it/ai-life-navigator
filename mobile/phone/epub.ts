@@ -89,7 +89,6 @@ function esc(s: string): string {
 export interface EpubEntry {
   createdAt: Date;
   content: string;
-  isPrivate?: boolean;
 }
 
 const MONTHS = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
@@ -120,7 +119,7 @@ export function buildEpub(entries: EpubEntry[], opts: { title?: string; id?: str
       const d = e.createdAt;
       const date = d.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
       const time = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-      body += `<h2>${esc(date)}, ${time}${e.isPrivate ? " · личная" : ""}</h2>\n`;
+      body += `<h2>${esc(date)}, ${time}</h2>\n`;
       for (const line of e.content.split(/\n+/)) if (line.trim()) body += `<p>${esc(line.trim())}</p>\n`;
     }
     chapters.push({
@@ -167,11 +166,10 @@ export function buildEpub(entries: EpubEntry[], opts: { title?: string; id?: str
 }
 
 // Все записи дневника с телефона. Личные включаются только если человек сам это выбрал.
-export async function buildDiaryEpub(includePrivate: boolean): Promise<{ bytes: Uint8Array; count: number }> {
+export async function buildDiaryEpub(): Promise<{ bytes: Uint8Array; count: number }> {
   await ready();
-  const rows = (await prisma.journalEntry.findMany({ orderBy: { createdAt: "asc" } })) as Array<{ createdAt: Date | string; content: string; isPrivate?: boolean }>;
+  const rows = (await prisma.journalEntry.findMany({ orderBy: { createdAt: "asc" } })) as Array<{ createdAt: Date | string; content: string }>;
   const entries = rows
-    .filter((r) => includePrivate || !r.isPrivate)
-    .map((r) => ({ createdAt: new Date(r.createdAt), content: String(r.content ?? ""), isPrivate: !!r.isPrivate }));
+    .map((r) => ({ createdAt: new Date(r.createdAt), content: String(r.content ?? "") }));
   return { bytes: buildEpub(entries), count: entries.length };
 }

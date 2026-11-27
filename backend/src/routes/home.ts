@@ -46,11 +46,11 @@ const MIN_ENTRIES = 3;
 const MAX_ENTRIES = 20;
 const ENTRY_CHARS = 600;
 
-// Записи, которые можно показывать внешней модели: не личные и не о тяжёлом состоянии.
+// Записи, которые можно показывать внешней модели: все, кроме записей о тяжёлом состоянии.
 async function loadUsableEntries(userId: string, windowDays: number, max = MAX_ENTRIES): Promise<string[]> {
   const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
   const rows = await prisma.journalEntry.findMany({
-    where: { userId, isPrivate: false, createdAt: { gte: since } },
+    where: { userId, createdAt: { gte: since } },
     orderBy: { createdAt: "desc" },
     take: max,
     select: { content: true },

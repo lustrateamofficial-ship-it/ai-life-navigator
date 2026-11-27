@@ -389,7 +389,7 @@ export async function restoreUserExport(userId: string, raw: unknown): Promise<R
       }
       journalCount++;
       const created = await tx.journalEntry.create({
-        data: { userId, content: j.content, isPrivate: j.isPrivate === true, createdAt: originalDate(j.createdAt) },
+        data: { userId, content: j.content, createdAt: originalDate(j.createdAt) },
       });
       journalIdMap.set(j.id, created.id);
     }

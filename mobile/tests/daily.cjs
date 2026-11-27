@@ -31,7 +31,7 @@ const { chromium } = require("playwright");
   await p.evaluate(() => (location.hash = "#/plans?tab=goals")); await p.waitForTimeout(500);
   ok("старый адрес /goals ведёт на «Планы», вкладка «Цели»", /plans\?tab=goals/.test(await p.url()) && (await p.locator('[role=tab][aria-selected=true]').innerText()) === "Цели");
   await p.evaluate(() => (location.hash = "#/plans?tab=reminders")); await p.waitForTimeout(500);
-  ok("старый адрес /reminders: вкладка «Напоминания»", (await p.locator('[role=tab][aria-selected=true]').innerText()) === "Напоминания" && /Напоминаний нет/.test(await p.locator("body").innerText()));
+  ok("старый адрес вкладки «Напоминания» открывает «Задачи» (напоминания теперь в задаче)", (await p.locator('[role=tab][aria-selected=true]').innerText()) === "Задачи" && (await p.getByLabel("Напомнить").count()) > 0);
   await p.evaluate(() => (location.hash = "#/plans?tab=tasks")); await p.waitForTimeout(500);
   ok("вкладка «Задачи»: поле новой задачи", (await p.getByLabel("Новая задача").count()) > 0);
   await p.getByRole("tab", { name: "Цели" }).click(); await p.waitForTimeout(300);

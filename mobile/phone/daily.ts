@@ -296,10 +296,18 @@ export async function pickTasks(date: Date, limit = 3): Promise<{ tasks: PlanTas
       out.push({ id: t.id, title: t.title });
     }
   };
-  const planned = plannedTaskIds(date).filter((id) => byId.has(id));
+  // «В плане» на день: выбранные вечером задачи и все, у кого срок или время именно на этот день (поставил их в «Планах»).
+  const dk = dayKey(date);
+  const startMs = startOfDay(date).getTime();
+  const endMs = endOfDay(date).getTime();
+  const onDay = (t: any) =>
+    (t.deadline && new Date(t.deadline).toISOString().slice(0, 10) === dk) ||
+    (t.scheduledTime && new Date(t.scheduledTime).getTime() >= startMs && new Date(t.scheduledTime).getTime() < endMs);
+  const picked = plannedTaskIds(date).filter((id) => byId.has(id));
+  const planned = [...new Set([...picked, ...open.filter(onDay).map((t: any) => t.id as string)])];
   planned.forEach((id) => add(byId.get(id)));
-  const end = endOfDay(date).getTime();
-  const start = startOfDay(date).getTime();
+  const end = endMs;
+  const start = startMs;
   const rest = open.filter((t: any) => !seen.has(t.id));
   const due = (t: any) => (t.deadline ? new Date(t.deadline).getTime() : Infinity);
   rest

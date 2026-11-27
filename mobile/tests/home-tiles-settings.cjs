@@ -8,10 +8,11 @@ const { chromium } = require("playwright");
   const ok = (n, v) => console.log((v ? "ДА  " : "НЕТ ") + n);
   await p.goto("http://localhost:8099/"); await p.waitForTimeout(500);
   await p.evaluate(() => window.__api("PUT", "/profile", { onboardingDone: true }));
-  await p.evaluate(() => localStorage.setItem("navigator:home-layout", JSON.stringify({ morning: ["week","ring","weight","focus"], day: ["week","ring","weight","focus"], evening: ["week","ring","weight","focus"] })));
+  await p.evaluate(() => localStorage.setItem("navigator:home-layout", JSON.stringify({ today: ["week","ring","weight","focus"] })));
   await p.goto("http://localhost:8099/#/settings"); await p.reload(); await p.waitForTimeout(800);
   ok("раздел «Плитки главного экрана» есть", await p.locator("#group-home").count() === 1);
-  const rows = await p.locator("#group-home .block-row:not(.off)").count();
+  await p.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true))); await p.waitForTimeout(200);
+  const rows = await p.locator("#group-home .tile-row:not(.off)").count();
   ok("в разделе видны переключатели плиток: " + rows, rows === 4);
   // ring и weight рядом -> обе половинки
   const widths = async () => p.evaluate(() => [...document.querySelectorAll(".home-grid > [data-block]")].map((e) => [e.dataset.block, Math.round(e.getBoundingClientRect().width)]));
@@ -20,18 +21,18 @@ const { chromium } = require("playwright");
   ok("кольцо и вес стоят рядом, каждая вдвое уже: " + JSON.stringify(w), w.find((x) => x[0]==="ring")[1] < full * 0.6 && w.find((x) => x[0]==="weight")[1] < full * 0.6);
   // выключаем «Вес» в настройках: «Кольцо» остаётся одно и растягивается
   await p.goto("http://localhost:8099/#/settings"); await p.waitForTimeout(500);
-  const periodTabs = ["Утро","День","Вечер"];
-  for (const t of periodTabs) { await p.locator("#group-home").getByRole("tab", { name: t }).click(); await p.locator("#group-home").getByRole("switch", { name: "Вес: показывать" }).click(); }
+  await p.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true)));
+  await p.locator("#group-home").getByRole("switch", { name: "Вес: показывать" }).click();
   await p.goto("http://localhost:8099/#/"); await p.waitForTimeout(800);
   w = await widths();
   ok("плитки «Вес» нет", !w.find((x) => x[0]==="weight"));
   ok("одинокое «Кольцо» на всю ширину: " + JSON.stringify(w), w.find((x) => x[0]==="ring")[1] >= full - 2);
   // перестановка стрелкой с клавиатуры
   await p.goto("http://localhost:8099/#/settings"); await p.waitForTimeout(500);
-  await p.locator("#group-home").getByRole("tab", { name: "Утро" }).click();
+  await p.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true)));
   await p.locator("#group-home").getByLabel("Кольцо дня: перетащить").focus(); await p.keyboard.press("ArrowDown");
   await p.goto("http://localhost:8099/#/"); await p.waitForTimeout(500);
-  const order = await p.evaluate(() => JSON.parse(localStorage.getItem("navigator:home-layout")).morning);
+  const order = await p.evaluate(() => JSON.parse(localStorage.getItem("navigator:home-layout")).today);
   ok("порядок меняется и сохраняется: " + order.join(","), order.join(",") === "week,focus,ring");
   console.log("ERRORS", errs);
   await b.close();

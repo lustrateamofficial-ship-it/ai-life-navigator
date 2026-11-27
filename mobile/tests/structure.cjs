@@ -9,7 +9,7 @@ const { chromium } = require("playwright");
   await p.goto("http://localhost:8099/"); await p.waitForTimeout(400);
   await p.evaluate(async () => { await window.__api("PUT", "/profile", { onboardingDone: true }); await window.__api("POST", "/tasks", { title: "Сдать отчёт" }); });
   await p.goto("http://localhost:8099/#/plans"); await p.reload(); await p.waitForTimeout(700);
-  ok("в «Планы» четыре вкладки", (await p.getByRole("tab").count()) === 4);
+  ok("в «Планы» три вкладки", (await p.getByRole("tab").count()) === 3);
   await p.getByRole("tab", { name: "Расписание" }).click(); await p.waitForTimeout(400);
   ok("вкладка «Расписание» показывает события и кнопку добавления", /Новое событие/.test(await txt()));
   await p.goto("http://localhost:8099/#/plans?tab=calendar"); await p.waitForTimeout(500);

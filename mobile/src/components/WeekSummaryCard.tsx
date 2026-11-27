@@ -34,7 +34,7 @@ export function WeekSummaryCard() {
         <button className="chip" aria-pressed={period === "month"} onClick={() => { setPeriod("month"); setData(null); }}>Месяц</button>
       </div>
       <p style={{ marginBottom: 8, fontSize: 13 }}>
-        Короткий итог по записям за последние {period === "week" ? "7 дней" : "30 дней"}, с цитатами. Личные записи не используются.
+        Короткий итог по записям за последние {period === "week" ? "7 дней" : "30 дней"}, с цитатами.
       </p>
       <button className="secondary" style={{ width: "100%" }} onClick={() => load()} disabled={loading}>
         {loading ? "Читаю..." : data ? "Обновить итоги" : period === "week" ? "Подвести итоги недели" : "Подвести итоги месяца"}

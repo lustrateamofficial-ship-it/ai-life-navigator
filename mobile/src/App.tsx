@@ -17,12 +17,15 @@ import { Portrait } from "./screens/Portrait";
 import { Settings } from "./screens/Settings";
 import { Trash } from "./screens/Trash";
 import { Mission } from "./screens/Mission";
+import { Habits } from "./screens/Habits";
+import { Finance } from "./screens/Finance";
 import { AppLock } from "./components/AppLock";
 import { ReminderBanner } from "./components/ReminderBanner";
 import { Frozen } from "./screens/Frozen";
 import { getFrozenInfo } from "../phone/safety";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { Toast } from "./components/Toast";
+import { Celebration } from "./components/Celebration";
 
 type AuthState = "loading" | "onboarding" | "ready" | "error" | "frozen";
 
@@ -80,6 +83,8 @@ export function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/trash" element={<Trash />} />
         <Route path="/mission" element={<Mission />} />
+        <Route path="/habits" element={<Habits />} />
+        <Route path="/finance" element={<Finance />} />
         <Route path="/week-review" element={<WeekReview />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="*" element={<Today />} />
@@ -87,6 +92,7 @@ export function App() {
       <ReminderBanner />
       <BottomNav />
       <Toast />
+      <Celebration />
     </HashRouter>
     </AppLock>
   );

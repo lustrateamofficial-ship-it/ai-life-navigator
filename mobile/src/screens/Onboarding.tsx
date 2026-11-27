@@ -37,7 +37,7 @@ export function Onboarding({ onDone }: Props) {
     <div className="screen">
       <header className="page-header">
         <Logo size={52} />
-        <h2>Навигатор Жизни</h2>
+        <h2>Ego</h2>
         <p>Дневник, из которого вырастают задачи, цели и учёт.</p>
       </header>
 
@@ -47,7 +47,7 @@ export function Onboarding({ onDone }: Props) {
       />
 
       <p style={{ margin: "16px 0", fontSize: 13 }}>
-        Записи доступны только тебе. Личные записи не отправляются во внешние ИИ-сервисы. Пустую запись можно не писать.
+        Записи доступны только тебе. Записи о тяжёлом состоянии не отправляются во внешние ИИ-сервисы. Пустую запись можно не писать.
       </p>
 
       <button className="primary" onClick={start} disabled={busy}>

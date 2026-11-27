@@ -53,8 +53,8 @@ export async function generateSelfPortrait(userId: string): Promise<
     }),
   ]);
 
-  // Личные записи и записи о тяжёлом состоянии в портрет (то есть во внешнюю модель) не идут.
-  const journalEntries = allJournalEntries.filter((e) => !e.isPrivate && !detectCrisis(e.content));
+  // Записи о тяжёлом состоянии в портрет (то есть во внешнюю модель) не идут, остальные идут все.
+  const journalEntries = allJournalEntries.filter((e) => !detectCrisis(e.content));
 
   if (journalEntries.length < MIN_JOURNAL_ENTRIES) {
     return {

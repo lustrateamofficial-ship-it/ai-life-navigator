@@ -8,6 +8,7 @@ import { IconClose } from "../components/Icons";
 
 interface Reminder {
   id: string;
+  taskId?: string | null;
   title: string;
   triggerAt: string;
   recurrence: string;
@@ -30,7 +31,8 @@ function toDatetimeLocal(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function Reminders({ embedded = false, autoAdd = false }: { embedded?: boolean; autoAdd?: boolean } = {}) {
+// legacyOnly: только прежние напоминания без задачи, без кнопки «Новое»: новые теперь ставятся из задачи («Напомнить»).
+export function Reminders({ embedded = false, autoAdd = false, legacyOnly = false }: { embedded?: boolean; autoAdd?: boolean; legacyOnly?: boolean } = {}) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showForm, setShowForm] = useState(autoAdd);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -41,7 +43,8 @@ export function Reminders({ embedded = false, autoAdd = false }: { embedded?: bo
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function load() {
-    setReminders(await api.get<Reminder[]>("/reminders"));
+    const all = await api.get<Reminder[]>("/reminders");
+    setReminders(legacyOnly ? all.filter((r) => !r.taskId) : all);
   }
 
   useEffect(() => {
@@ -101,8 +104,11 @@ export function Reminders({ embedded = false, autoAdd = false }: { embedded?: bo
     }
   }
 
+  if (legacyOnly && reminders.length === 0 && !showForm) return null;
+
   return (
     <div className={embedded ? undefined : "screen"}>
+      {legacyOnly && <div className="settings-group" style={{ marginTop: 18 }}><h3>Напоминания</h3><p className="small">Созданы раньше отдельно от задач. Новые напоминания ставятся в задаче, поле «Напомнить».</p></div>}
       {!embedded && (
         <>
           <Link className="back-link" to="/me">
@@ -116,7 +122,7 @@ export function Reminders({ embedded = false, autoAdd = false }: { embedded?: bo
       )}
 
       <div className="card">
-        {reminders.length === 0 && <p className="empty">Напоминаний нет.</p>}
+        {reminders.length === 0 && !legacyOnly && <p className="empty">Напоминаний нет.</p>}
         {reminders.map((r) => (
           <div className="task-row" key={r.id}>
             <button className="list-main" onClick={() => openEditForm(r)}>
@@ -134,7 +140,7 @@ export function Reminders({ embedded = false, autoAdd = false }: { embedded?: bo
         ))}
       </div>
 
-      {!showForm && (
+      {!showForm && !legacyOnly && (
         <button className="primary" onClick={openCreateForm}>
           Новое напоминание
         </button>

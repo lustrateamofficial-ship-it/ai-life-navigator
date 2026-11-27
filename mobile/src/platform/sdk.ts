@@ -78,7 +78,7 @@ export async function biometricAuthenticate(reason: string): Promise<boolean> {
     const cred = (await navigator.credentials.create({
       publicKey: {
         challenge,
-        rp: { name: "Навигатор Жизни" },
+        rp: { name: "Ego" },
         user: { id: crypto.getRandomValues(new Uint8Array(16)), name: "me", displayName: "Я" },
         pubKeyCredParams: [
           { type: "public-key", alg: -7 },

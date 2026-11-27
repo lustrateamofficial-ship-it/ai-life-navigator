@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { dayProgress, expensesByCategory, financeSeries, type CategoryRow, type DayProgress, type MonthRow } from "../../phone/charts";
 import { formatNumber } from "../utils/format";
 
 // Кольцо дня: сколько задач из сегодняшних сделано.
 export function DayRing() {
+  const navigate = useNavigate();
   const [p, setP] = useState<DayProgress | null>(null);
   useEffect(() => {
     let off = false;
@@ -23,7 +25,12 @@ export function DayRing() {
   const share = p.total ? Math.min(1, p.done / p.total) : 0;
   const caption = p.total === 0 ? "На сегодня задач нет" : p.done === p.total ? "Всё сделано" : `Осталось ${p.total - p.done}`;
   return (
-    <div className="card ring-card">
+    <button
+      type="button"
+      className="card ring-card ring-btn"
+      onClick={() => navigate(p.total === 0 ? "/plans?tab=tasks&add=1" : "/plans?tab=tasks")}
+      aria-label={p.total === 0 ? "Кольцо дня: задач нет, добавить задачу" : `Кольцо дня: сделано ${p.done} из ${p.total}, открыть задачи`}
+    >
       <svg width="88" height="88" viewBox="0 0 88 88" role="img" aria-label={`Сделано ${p.done} из ${p.total}`}>
         <circle cx="44" cy="44" r={R} fill="none" stroke="var(--surface-2)" strokeWidth="9" />
         <circle cx="44" cy="44" r={R} fill="none" stroke="var(--accent)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${C * share} ${C}`} transform="rotate(-90 44 44)" />
@@ -34,9 +41,9 @@ export function DayRing() {
       <div>
         <div className="card-title" style={{ marginBottom: 4 }}>Кольцо дня</div>
         <b className="ring-main">{caption}</b>
-        <p className="small">Сделано {p.done} из {p.total}</p>
+        <p className="small">{p.total === 0 ? "Нажми, чтобы добавить задачу" : `Сделано ${p.done} из ${p.total}`}</p>
       </div>
-    </div>
+    </button>
   );
 }
 

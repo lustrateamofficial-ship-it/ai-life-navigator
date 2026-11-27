@@ -3,15 +3,17 @@
 const KEY = "navigator:appearance";
 
 export type ThemeMode = "auto" | "light" | "dark" | "schedule";
+export type HeaderStyle = "center" | "plate" | "bar";
 
 export interface Appearance {
   theme: ThemeMode;
   darkFrom: string; // "ЧЧ:ММ": с этого времени тёмная тема (режим «по расписанию»)
   darkTo: string; // до этого времени
   lite: boolean; // облегчённый режим: меньше кнопок и карточек
+  header: HeaderStyle; // оформление шапки экрана: по центру, цветная плашка или тонкая строка
 }
 
-const DEFAULTS: Appearance = { theme: "auto", darkFrom: "21:00", darkTo: "07:00", lite: false };
+const DEFAULTS: Appearance = { theme: "auto", darkFrom: "21:00", darkTo: "07:00", lite: false, header: "center" };
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export function readAppearance(): Appearance {
@@ -31,6 +33,7 @@ export function normalizeAppearance(raw: any): Appearance {
     darkFrom: typeof r.darkFrom === "string" && TIME.test(r.darkFrom) ? r.darkFrom : DEFAULTS.darkFrom,
     darkTo: typeof r.darkTo === "string" && TIME.test(r.darkTo) ? r.darkTo : DEFAULTS.darkTo,
     lite: r.lite === true,
+    header: ["center", "plate", "bar"].includes(r.header) ? r.header : DEFAULTS.header,
   };
 }
 
@@ -66,6 +69,7 @@ export function applyAppearance(now = new Date()) {
   else if (a.theme === "schedule") theme = isDarkBySchedule(a.darkFrom, a.darkTo, now) ? "dark" : "light";
   if (theme) root.setAttribute("data-theme", theme);
   else root.removeAttribute("data-theme");
+  root.setAttribute("data-header", a.header);
   if (a.lite) root.setAttribute("data-lite", "1");
   else root.removeAttribute("data-lite");
 

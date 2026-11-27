@@ -19,7 +19,8 @@ export function DayBrief({ showTasks = true }: { showTasks?: boolean } = {}) {
   if (!brief) return null;
   const s = readDaily();
   const tasks = showTasks ? brief.tasks : []; // если рядом блок «Что полезно сейчас», задачи не дублируем
-  const empty = tasks.length === 0 && brief.schedule.length === 0;
+  // Пустым план считается по настоящему составу дня, а не по тому, что показано: блок «Что полезно сейчас» ничего не отменяет.
+  const empty = brief.plannedCount === 0 && brief.schedule.length === 0;
 
   if (evening) {
     return (

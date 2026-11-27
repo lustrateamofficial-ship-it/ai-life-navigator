@@ -1,4 +1,4 @@
-/* Дизайн-система «Навигатор Жизни».
+/* Дизайн-система «Ego».
    Идея: интерфейс спокойный и родной для телефона, а выразительным делаем одно —
    поверхность, на которой человек пишет (дневник): она с засечками и похожа на бумагу.
    Всё остальное намеренно тихое, чтобы ничто не отвлекало от записи.
@@ -363,55 +363,6 @@ textarea {
   margin-top: 8px;
   padding-top: 4px;
   border-top: 1px solid var(--border);
-}
-.private-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  font-size: 14px;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.private-toggle.on {
-  color: var(--accent);
-  font-weight: 500;
-}
-/* Переключатель вместо галочки: состояние «включено» читается с первого взгляда. */
-.private-toggle input[type="checkbox"] {
-  -webkit-appearance: none;
-  appearance: none;
-  position: relative;
-  width: 40px;
-  height: 24px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  transition: background-color 160ms ease, border-color 160ms ease;
-}
-.private-toggle input[type="checkbox"]::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  transition: transform 160ms ease, background-color 160ms ease;
-}
-.private-toggle input[type="checkbox"]:checked {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.private-toggle input[type="checkbox"]:checked::after {
-  background: var(--on-accent);
-  transform: translateX(16px);
-}
-.private-toggle svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
 }
 
 /* Подтверждение разбора записи */
@@ -866,14 +817,6 @@ mark {
   flex-shrink: 0;
   white-space: nowrap;
 }
-.composer-bar .private-toggle {
-  min-width: 0;
-  flex: 1 1 auto;
-  gap: 6px;
-}
-.private-toggle input[type="checkbox"] {
-  flex-shrink: 0;
-}
 
 /* Кнопка диктовки в форме записи */
 .mic-btn {
@@ -1116,6 +1059,21 @@ a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; 
 
 /* Плитки */
 .card { background: var(--surface); border: 0; border-radius: var(--radius); padding: 16px 18px; box-shadow: none; margin-bottom: 10px; }
+
+/* ── 1.33: единая цветовая система. Все карточки окрашены, а не только три плитки. ──
+   Полные тона (--mint, --butter, --lilac, --peach) у главных плиток, мягкие (-soft) у обычных карточек:
+   они идут по кругу, поэтому соседние карточки разного цвета. Правило стоит рано и держится низкой «весомостью»,
+   чтобы любое точечное правило ниже (кольцо, вес, неделя) перекрывало его. */
+:root {
+  --mint-soft: color-mix(in srgb, var(--mint) 62%, var(--surface));
+  --butter-soft: color-mix(in srgb, var(--butter) 62%, var(--surface));
+  --lilac-soft: color-mix(in srgb, var(--lilac) 62%, var(--surface));
+  --peach-soft: color-mix(in srgb, var(--peach) 62%, var(--surface));
+}
+:where(.screen > .card, .screen > div:not(.home-grid):not(.tile-editor):not(.task-edit) > .card):nth-of-type(4n+1) { background: var(--mint-soft); }
+:where(.screen > .card, .screen > div:not(.home-grid):not(.tile-editor):not(.task-edit) > .card):nth-of-type(4n+2) { background: var(--butter-soft); }
+:where(.screen > .card, .screen > div:not(.home-grid):not(.tile-editor):not(.task-edit) > .card):nth-of-type(4n+3) { background: var(--lilac-soft); }
+:where(.screen > .card, .screen > div:not(.home-grid):not(.tile-editor):not(.task-edit) > .card):nth-of-type(4n+4) { background: var(--peach-soft); }
 .card-title { font-size: 14px; font-weight: 700; color: var(--text); opacity: 0.75; }
 .fold-body { margin: 12px -18px -18px; padding: 0 12px 12px; }
 .fold-body .card { background: var(--bg); border-radius: 22px; }
@@ -1261,3 +1219,212 @@ button.more-item { font: inherit; color: inherit; text-align: center; cursor: po
 
 .half-badge { margin-left: 6px; padding: 0 6px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; }
 .home-section .custom-hint { margin-top: 10px; }
+
+/* ── 1.33: шторка «+» тянется вниз, активный раздел внизу виден сразу ── */
+.sheet { transition: transform 0.2s ease; animation: sheet-in 0.22s ease-out; will-change: transform; }
+.sheet.dragging { transition: none; }
+.sheet-wrap { transition: background 0.2s ease; }
+.sheet-head { touch-action: none; cursor: grab; padding: 8px 0 2px; margin: -8px 0 8px; user-select: none; -webkit-user-select: none; outline: none; }
+.sheet-head:active { cursor: grabbing; }
+.sheet-head:focus-visible .sheet-grip { background: var(--text); }
+.sheet-grip { width: 44px; height: 5px; border-radius: 3px; background: var(--border-strong, var(--border)); margin: 0 auto 14px; }
+.sheet h3 { margin: 0 4px 6px; }
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+.nav-item { position: relative; gap: 3px; }
+.nav-item .nav-icon { width: 52px; height: 30px; padding: 3px 14px; border-radius: 15px; transition: background 0.18s ease, color 0.18s ease; box-sizing: border-box; }
+.nav-item.active .nav-icon { background: var(--text); color: var(--bg); }
+.nav-item.active span { color: var(--text); font-weight: 800; }
+.nav-item:not(.active):active .nav-icon { background: var(--surface-2); }
+
+/* Кольцо дня нажимается и ведёт в задачи, как плитка веса ведёт к записи веса */
+.ring-btn { font: inherit; text-align: left; cursor: pointer; width: 100%; border: 0; }
+.ring-btn:active { transform: scale(0.985); }
+
+/* Поле, растущее по тексту (правка задач, идей, памяти, записей) */
+.auto-ta { display: block; width: 100%; resize: none; overflow-y: auto; max-height: 60vh; line-height: 1.45; }
+
+/* Задачи: срок, напоминание и повтор в карточке; выполненные с понятной кнопкой «Вернуть» */
+.task-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.task-fields label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.task-fields label:last-child { grid-column: 1 / -1; }
+.task-fields input, .task-fields select { width: 100%; min-width: 0; }
+.task-edit { background: var(--surface-2); border-radius: 22px; padding: 14px; margin: 0 0 10px; }
+.task-edit .actions { margin-top: 12px; }
+.task-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.task-title { white-space: pre-wrap; overflow-wrap: anywhere; }
+.task-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.meta-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text); }
+.swipe .meta-chip { background: var(--surface); }
+.meta-chip svg { width: 13px; height: 13px; }
+.meta-chip.bell { background: var(--butter); color: var(--on-tone); }
+.meta-chip.bell.past { opacity: 0.6; }
+.done-mark { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--text); position: relative; }
+.done-mark::after { content: ""; position: absolute; left: 7px; top: 4px; width: 6px; height: 11px; border: solid var(--bg); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+.done-text .task-title { text-decoration: line-through; text-decoration-thickness: 1.5px; color: var(--text-muted); }
+.undo-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 14px; font-weight: 700; }
+.undo-btn svg { width: 16px; height: 16px; }
+.undo-btn:active { transform: scale(0.96); }
+
+/* ── 1.33: редактор плиток ── */
+.tile-list { position: relative; }
+.tile-row { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 22px; padding: 10px 12px 10px 8px; margin-bottom: 8px; transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s ease; will-change: transform; }
+.tile-row.off { opacity: 0.6; padding-left: 18px; }
+.tile-list.is-dragging .tile-row:not(.dragging) { pointer-events: none; }
+.tile-list.instant .tile-row { transition: none !important; }
+.tile-row.dragging { transition: box-shadow 0.18s ease; z-index: 5; position: relative; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22); }
+.tile-row.dragging.settling { transition: transform 0.17s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.17s ease; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); }
+.tile-row .grab-handle { width: 40px; min-width: 40px; height: 52px; min-height: 52px; margin: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted); touch-action: none; cursor: grab; flex: none; -webkit-user-select: none; user-select: none; }
+.tile-row.dragging .grab-handle { cursor: grabbing; color: var(--text); }
+.tile-row .block-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tile-row .block-text b { font-size: 16px; }
+.tile-row .block-text small { color: var(--text-muted); font-size: 12px; }
+.mini-wrap { margin: 0 0 14px; padding: 12px; background: var(--surface); border-radius: 22px; }
+.mini-title { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+.mini-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.mini-tile { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; font-size: 11px; font-weight: 700; line-height: 1.2; min-height: 34px; display: flex; align-items: center; transition: background 0.2s; }
+.mini-tile.full { grid-column: 1 / -1; }
+
+/* Пропуск дня: панель с объяснением, счётчиком пропусков и понятной кнопкой */
+.skip-panel { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; margin-top: 14px; padding: 14px; border-radius: 22px; background: var(--butter); color: var(--on-tone); }
+.skip-panel.is-skipped { background: var(--mint); }
+.skip-ic { width: 44px; height: 44px; border-radius: 16px; background: color-mix(in srgb, var(--on-tone) 14%, transparent); display: flex; align-items: center; justify-content: center; }
+.skip-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.skip-text b { font-size: 16px; }
+.skip-text > span { font-size: 13px; opacity: 0.85; }
+.skip-pips { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.skip-pips i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; opacity: 0.5; }
+.skip-pips i.on { background: currentColor; opacity: 1; }
+.skip-pips small { font-size: 12px; margin-left: 4px; opacity: 0.85; }
+.skip-btn { grid-column: 1 / -1; min-height: 48px; border-radius: 999px; background: var(--on-tone); color: var(--butter); font-size: 15px; font-weight: 700; padding: 0 20px; }
+.is-skipped .skip-btn { color: var(--mint); }
+.skip-btn:disabled { opacity: 0.45; }
+.skip-btn:active:not(:disabled) { transform: scale(0.98); }
+
+/* ── 1.33: шапки экранов по центру, три оформления на выбор (Настройки → Приложение → Шапка экранов) ── */
+.page-header { text-align: center; margin: 0 0 16px; }
+.page-header h2 { margin: 0 auto 4px; }
+.page-header p { margin: 4px auto 0; max-width: 36ch; font-size: 14px; color: var(--text-muted); }
+.page-header .streak-chip { display: inline-block; margin-top: 8px; }
+.page-header-row { position: relative; display: block; padding: 0 52px; min-height: 48px; }
+.page-header-row:has(.header-actions > :nth-child(2)) { padding: 0 104px; }
+.page-header-row > .header-actions { position: absolute; right: 0; top: 0; }
+.page-header-row > div { min-width: 0; }
+.back-link { display: inline-block; margin-bottom: 8px; }
+
+/* Плашка: заголовок на цветной подложке */
+:root[data-header="plate"] .page-header { background: var(--butter); color: var(--on-tone); border-radius: 28px; padding: 18px 16px 16px; }
+:root[data-header="plate"] .page-header h2, :root[data-header="plate"] .page-header p, :root[data-header="plate"] .page-header .date-line { color: var(--on-tone); }
+:root[data-header="plate"] .page-header p, :root[data-header="plate"] .page-header .date-line { opacity: 0.75; }
+:root[data-header="plate"] .page-header-row { padding-left: 52px; padding-right: 52px; }
+:root[data-header="plate"] .page-header-row:has(.header-actions > :nth-child(2)) { padding-left: 104px; padding-right: 104px; }
+:root[data-header="plate"] .page-header-row > .header-actions { right: 12px; top: 12px; }
+:root[data-header="plate"] .page-header .icon-btn { background: color-mix(in srgb, var(--on-tone) 12%, transparent); color: var(--on-tone); }
+:root[data-header="plate"] .page-header .streak-chip { background: color-mix(in srgb, var(--on-tone) 14%, transparent); color: var(--on-tone); }
+:root[data-header="plate"] .page-header a { color: var(--on-tone); }
+
+/* Строка: компактная верхняя панель с тонкой чертой */
+:root[data-header="bar"] .page-header { margin: -8px -16px 16px; padding: 10px 16px 12px; border-bottom: 1px solid var(--border); }
+:root[data-header="bar"] .page-header h2 { font-size: 19px; font-weight: 800; margin-bottom: 0; }
+:root[data-header="bar"] .page-header p { font-size: 12px; margin-top: 2px; }
+:root[data-header="bar"] .page-header .date-line { font-size: 12px; margin-bottom: 0; }
+:root[data-header="bar"] .page-header-row { min-height: 44px; padding-left: 52px; padding-right: 52px; }
+:root[data-header="bar"] .page-header-row:has(.header-actions > :nth-child(2)) { padding-left: 104px; padding-right: 104px; }
+:root[data-header="bar"] .page-header-row > .header-actions { right: 16px; top: 0; }
+:root[data-header="bar"] .page-header .icon-btn { width: 40px; height: 40px; }
+
+/* Выбор шапки в настройках */
+.header-picks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.header-pick { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 10px; border-radius: 20px; background: var(--surface-2); text-align: left; border: 2px solid transparent; min-height: 0; }
+.header-pick.on { border-color: var(--text); background: var(--accent-soft); }
+.header-pick b { font-size: 13px; }
+.header-pick small { font-size: 11px; line-height: 1.25; color: var(--text-muted); }
+.hp-demo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 52px; border-radius: 12px; background: var(--bg); padding: 6px; }
+.hp-demo i { display: block; height: 6px; border-radius: 3px; background: var(--text); }
+.hp-demo i:first-child { width: 55%; height: 8px; }
+.hp-demo i:last-child { width: 35%; opacity: 0.4; height: 5px; }
+.hp-plate { background: var(--butter); }
+.hp-plate i { background: var(--on-tone); }
+.hp-bar { justify-content: flex-start; border-radius: 12px; border-bottom: 2px solid var(--border-strong); background: var(--bg); }
+.hp-bar i:first-child { height: 6px; width: 45%; }
+
+/* ── 1.33: тона главных плиток и вкладок ── */
+.home-grid > [data-block="brief"] > .card { background: var(--peach); }
+.home-grid > [data-block="focus"] > .card { background: var(--lilac-soft); }
+.home-grid > [data-block="earlier"] > .card { background: var(--mint-soft); }
+.home-grid > [data-block="insight"] .card:nth-of-type(odd) { background: var(--lilac-soft); }
+.home-grid > [data-block="insight"] .card:nth-of-type(even) { background: var(--peach-soft); }
+.composer { background: var(--butter-soft); }
+.composer textarea { background: color-mix(in srgb, var(--butter-soft) 55%, var(--surface)); }
+
+/* Вкладки и чипы */
+.seg-tabs { background: var(--butter-soft); }
+.seg-tabs button { color: var(--text); font-weight: 600; }
+.seg-tabs button.active { background: var(--text); color: var(--bg); }
+.chip { background: var(--surface); }
+.chip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+/* «Я»: плитки и ярлыки разделов */
+.tile-grid > .tile:nth-child(1) { background: var(--mint); color: var(--on-tone); }
+.tile-grid > .tile:nth-child(2) { background: var(--butter); color: var(--on-tone); }
+.tile-grid > .tile .tile-label { color: inherit; opacity: 0.75; }
+.tile-grid > .tile svg { color: inherit; }
+.tile-grid > .tile.active { border-color: var(--text); }
+.more-item:nth-child(4n+1) { background: var(--mint); }
+.more-item:nth-child(4n+2) { background: var(--butter); }
+.more-item:nth-child(4n+3) { background: var(--lilac); }
+.more-item:nth-child(4n+4) { background: var(--peach); }
+.more-item { color: var(--on-tone); font-weight: 600; }
+.more-item .sheet-ic { background: color-mix(in srgb, var(--on-tone) 12%, transparent); color: var(--on-tone); }
+.mission-line.card { background: var(--lilac); color: var(--on-tone); }
+.mission-line .mission-hint, .mission-line .card-title, .mission-line p { color: inherit; }
+.mission-line .mission-hint { opacity: 0.7; }
+
+/* Настройки: у каждого раздела свой цвет, внутри мягкий оттенок того же цвета */
+.group-fold { --g: var(--surface); --g-soft: var(--surface); }
+#group-day { --g: var(--butter); --g-soft: var(--butter-soft); }
+#group-home { --g: var(--lilac); --g-soft: var(--lilac-soft); }
+#group-ai { --g: var(--mint); --g-soft: var(--mint-soft); }
+#group-app { --g: var(--peach); --g-soft: var(--peach-soft); }
+#group-data { --g: var(--butter); --g-soft: var(--butter-soft); }
+#group-safety { --g: var(--lilac); --g-soft: var(--lilac-soft); }
+.group-fold > summary.settings-group { background: var(--g); color: var(--on-tone); }
+.group-fold > summary.settings-group h3, .group-fold > summary.settings-group p { color: inherit; }
+.group-fold > summary.settings-group p { opacity: 0.75; }
+.group-fold > summary.settings-group::after { color: inherit; }
+.group-fold > .card { background: var(--g-soft); }
+.group-fold .tile-row { background: var(--surface); }
+
+/* Список задач: непрозрачные строки на цветной карточке (подписи свайпа под ними не просвечивают) */
+.swipe, .swipe .swipe-inner { background: var(--surface); }
+.swipe .icon-btn { width: 38px; height: 38px; background: var(--surface-2); }
+
+/* Переходы между экранами: экран мягко выезжает снизу, карточки появляются по очереди. */
+@keyframes route-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes card-in { from { opacity: 0; transform: translateY(12px) scale(0.985); } to { opacity: 1; transform: none; } }
+.route { animation: route-in 0.26s cubic-bezier(0.22, 0.8, 0.3, 1) both; }
+.route .screen > * { animation: card-in 0.34s cubic-bezier(0.22, 0.8, 0.3, 1) both; }
+.route .screen > *:nth-child(2) { animation-delay: 0.03s; }
+.route .screen > *:nth-child(3) { animation-delay: 0.06s; }
+.route .screen > *:nth-child(4) { animation-delay: 0.09s; }
+.route .screen > *:nth-child(5) { animation-delay: 0.12s; }
+.route .screen > *:nth-child(6) { animation-delay: 0.15s; }
+.route .screen > *:nth-child(7) { animation-delay: 0.18s; }
+.route .screen > *:nth-child(n + 8) { animation-delay: 0.21s; }
+:root[data-lite="1"] .route .screen > * { animation: none; }
+/* Нажатие: кнопки и карточки-ссылки чуть «вдавливаются». */
+button:not(:disabled):active, .tile:active, a.card:active { transform: scale(0.97); }
+button, .tile, a.card { transition: transform 0.12s ease; }
+.task-edit { animation: card-in 0.24s ease both; }
+.chip[aria-pressed="true"], .seg-tabs button.active { transition: background-color 0.2s ease, color 0.2s ease; }
+
+/* Праздник: все задачи на сегодня выполнены. */
+@keyframes cel-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cel-pop { 0% { opacity: 0; transform: scale(0.7) translateY(30px); } 70% { transform: scale(1.04); } 100% { opacity: 1; transform: none; } }
+.celebrate { position: fixed; inset: 0; z-index: 300; background: rgba(8, 24, 18, 0.78); display: flex; align-items: center; justify-content: center; animation: cel-fade 0.25s ease both; }
+.celebrate-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.celebrate-card { position: relative; background: #fff; border-radius: 28px; padding: 14px 14px 16px; width: min(300px, 82vw); text-align: center; box-shadow: 0 20px 60px #0008; animation: cel-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.celebrate-card img { display: block; width: 100%; height: auto; border-radius: 18px; }
+.celebrate-card b { display: block; margin: 12px 4px 12px; color: #14161a; font-size: 18px; line-height: 1.25; }
+.celebrate-card button { width: 100%; }
+@media (prefers-reduced-motion: reduce) { .route, .route .screen > *, .celebrate-card { animation: none; } }

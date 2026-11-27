@@ -104,7 +104,7 @@ const result = await build({
 copyFileSync(resolve(root, "public", "manifest.webmanifest"), resolve(dist, "manifest.webmanifest"));
 // Версия кэша офлайн-режима берётся из версии приложения и номера сборки: новая сборка всегда обновляет кэш.
 writeFileSync(resolve(dist, "sw.js"), readFileSync(resolve(root, "public", "sw.js"), "utf8").replace(/VERSION = "[^"]*"/, `VERSION = "${APP_BUILD}"`));
-for (const f of ["icon-192.png", "icon-512.png", "icon-maskable-512.png"]) {
+for (const f of ["icon-192.png", "icon-512.png", "icon-maskable-512.png", "celebrate.gif", "celebrate.mp3"]) {
   if (existsSync(resolve(root, "public", f))) copyFileSync(resolve(root, "public", f), resolve(dist, f));
 }
 writeFileSync(

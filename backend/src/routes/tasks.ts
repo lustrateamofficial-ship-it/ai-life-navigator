@@ -12,14 +12,35 @@ const taskSchema = z.object({
   title: z.string().trim().min(1).max(500),
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
-  deadline: z.string().datetime().optional(),
+  deadline: z.string().datetime().nullable().optional(),
   estimatedDurationMin: z.number().int().optional(),
   goalId: z.string().uuid().optional().nullable(),
   stageId: z.string().uuid().optional().nullable(),
   scheduledTime: z.string().datetime().optional(),
   status: z.enum(["todo", "in_progress", "done", "postponed", "cancelled"]).optional(),
   recurrence: z.enum(["daily", "weekdays", "weekends", "weekly", "monthly"]).nullable().optional(),
+  // Когда напомнить об этой задаче. null убирает напоминание. Само напоминание лежит отдельной записью, привязанной к задаче.
+  remindAt: z.string().datetime().nullable().optional(),
 });
+
+// Напоминание задачи хранится в таблице напоминаний (taskId), поэтому оно срабатывает так же, как обычное:
+// в уведомлении, в расписании дня и в «Что полезно сейчас».
+async function syncTaskReminder(userId: string, task: { id: string; title: string }, remindAt: string | null | undefined, titleChanged = false) {
+  const linked = await prisma.reminder.findMany({ where: { userId, taskId: task.id } });
+  if (remindAt === null) {
+    if (linked.length) await prisma.reminder.deleteMany({ where: { userId, taskId: task.id } });
+    return;
+  }
+  if (remindAt) {
+    if (linked[0]) {
+      await prisma.reminder.update({ where: { id: linked[0].id }, data: { title: task.title, triggerAt: new Date(remindAt), recurrence: "once", active: true } });
+    } else {
+      await prisma.reminder.create({ data: { userId, taskId: task.id, title: task.title, triggerAt: new Date(remindAt), recurrence: "once" } });
+    }
+    return;
+  }
+  if (titleChanged && linked.length) await prisma.reminder.updateMany({ where: { userId, taskId: task.id }, data: { title: task.title } });
+}
 
 // БАГ (найден при аудите, IDOR): раньше goalId/stageId принимались от клиента без
 // проверки принадлежности текущему пользователю. Можно было привязать СВОЮ задачу
@@ -85,7 +106,11 @@ tasksRouter.get("/", async (req, res) => {
     orderBy: [{ priority: "desc" }, { scheduledTime: "asc" }],
     include: { goal: { select: { id: true, title: true } }, stage: { select: { id: true, title: true } } },
   });
-  res.json(tasks);
+  // К каждой задаче добавляем время напоминания (если оно есть), чтобы список мог показать его рядом с названием.
+  const ids = tasks.map((t: any) => t.id);
+  const rems = ids.length ? await prisma.reminder.findMany({ where: { userId: req.userId!, taskId: { in: ids } } }) : [];
+  const byTask = new Map<string, any>(rems.map((r: any) => [r.taskId, r]));
+  res.json(tasks.map((t: any) => ({ ...t, remindAt: byTask.get(t.id)?.triggerAt ?? null, remindActive: byTask.get(t.id)?.active ?? false })));
 });
 
 // POST /tasks
@@ -104,6 +129,7 @@ tasksRouter.post("/", async (req, res) => {
   let deadline = parsed.data.deadline ? new Date(parsed.data.deadline) : undefined;
   if (!deadline && parsed.data.recurrence) deadline = firstOccurrence(new Date(), parsed.data.recurrence, req.userTimezone ?? "UTC");
 
+  const { remindAt } = parsed.data;
   const task = await prisma.task.create({
     data: {
       userId: req.userId!,
@@ -118,7 +144,8 @@ tasksRouter.post("/", async (req, res) => {
       recurrence: parsed.data.recurrence ?? undefined,
     },
   });
-  res.status(201).json(task);
+  await syncTaskReminder(req.userId!, task, remindAt);
+  res.status(201).json({ ...task, remindAt: remindAt ?? null });
 });
 
 // PUT /tasks/:id
@@ -142,7 +169,8 @@ tasksRouter.put("/:id", async (req, res) => {
     }
   }
 
-  const data: any = { ...parsed.data };
+  const { remindAt, ...rest } = parsed.data;
+  const data: any = { ...rest };
   if (parsed.data.deadline) data.deadline = new Date(parsed.data.deadline);
   if (parsed.data.scheduledTime) data.scheduledTime = new Date(parsed.data.scheduledTime);
 
@@ -158,6 +186,15 @@ tasksRouter.put("/:id", async (req, res) => {
   }
 
   const task = await prisma.task.update({ where: { id: req.params.id }, data });
+
+  // Напоминание следует за задачей: поменяли время или название, выполнили (перестаёт напоминать), вернули в работу, удалили.
+  await syncTaskReminder(req.userId!, task, remindAt, parsed.data.title !== undefined && parsed.data.title !== existing.title);
+  if (parsed.data.status === "done" && existing.status !== "done") {
+    await prisma.reminder.updateMany({ where: { userId: req.userId!, taskId: task.id }, data: { active: false } });
+  } else if (parsed.data.status && parsed.data.status !== "done" && existing.status === "done") {
+    // Вернули в работу: напоминание снова включается, если время ещё не прошло.
+    await prisma.reminder.updateMany({ where: { userId: req.userId!, taskId: task.id, triggerAt: { gt: new Date() } }, data: { active: true } });
+  }
 
   // Повторяющаяся задача: когда её отмечают выполненной, появляется следующая. Срок считается от
   // прежнего срока (или от сегодняшнего дня, если срока не было) и всегда уходит в будущее.
@@ -181,6 +218,15 @@ tasksRouter.put("/:id", async (req, res) => {
         deadline: next,
       },
     });
+    // Напоминание у повторяющейся задачи переезжает на новую дату вместе с ней.
+    const oldRem = (await prisma.reminder.findMany({ where: { userId: req.userId!, taskId: task.id } }))[0];
+    if (oldRem && existing.deadline) {
+      const nextTask = (await prisma.task.findMany({ where: { userId: req.userId!, title: existing.title, deadline: next, status: "todo" } }))[0];
+      if (nextTask) {
+        const shifted = new Date(new Date(oldRem.triggerAt).getTime() + (next.getTime() - existing.deadline.getTime()));
+        await prisma.reminder.create({ data: { userId: req.userId!, taskId: nextTask.id, title: existing.title, triggerAt: shifted, recurrence: "once" } });
+      }
+    }
   }
 
   // Раздел 10/24: прогресс цели должен отражать реальное выполнение задач,
@@ -198,6 +244,7 @@ tasksRouter.delete("/:id", async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Not found" });
 
   await prisma.task.delete({ where: { id: req.params.id } });
+  await prisma.reminder.deleteMany({ where: { userId: req.userId!, taskId: req.params.id } });
 
   // Удаление выполненной задачи тоже должно пересчитать прогресс цели (она больше не считается).
   if (existing.goalId || existing.stageId) {

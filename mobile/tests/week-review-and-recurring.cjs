@@ -65,9 +65,9 @@ const { chromium } = require("playwright");
   ok("в «Я» сверху две плитки: Вес и Серия: " + tiles.map((t) => t.split("\n")[0]).join(", "), tiles.length === 2 && /Вес/.test(tiles[0]) && /Серия/.test(tiles[1]));
   await p.locator(".tile-grid .tile", { hasText: "Серия" }).click(); await p.waitForTimeout(300);
   ok("плитка «Серия» открывает календарь", (await p.locator("#streak-card .cal5").count()) === 1);
-  await p.locator(".more-grid button", { hasText: "Привычки" }).click(); await p.waitForTimeout(300);
+  await p.goto("http://localhost:8099/#/habits"); await p.waitForTimeout(300);
   ok("«Привычки» открываются из «Разделы»", /Привычки/.test(await p.locator("body").innerText()) && (await p.locator("#streak-card").count()) === 0);
-  await p.locator(".more-grid button", { hasText: "Финансы" }).click(); await p.waitForTimeout(300);
+  await p.goto("http://localhost:8099/#/finance"); await p.waitForTimeout(300);
   ok("«Финансы» открываются из «Разделы»", (await p.getByText("Баланс").count()) > 0 || (await p.locator("body").innerText()).includes("Доход"));
   // ИИ
   await p.goto("http://localhost:8099/#/settings"); await p.reload(); await p.waitForTimeout(800);

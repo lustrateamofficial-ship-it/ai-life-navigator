@@ -1,4 +1,5 @@
 import { confirmDelete } from "../utils/format";
+import { AutoTextarea } from "../components/AutoTextarea";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
@@ -174,7 +175,7 @@ export function Memory() {
         <div className="card" >
           {editingId === item.id ? (
             <>
-              <textarea rows={3} aria-label="Текст" value={editText} onChange={(e) => setEditText(e.target.value)} />
+              <AutoTextarea minRows={3} aria-label="Текст" value={editText} onChange={(e) => setEditText(e.target.value)} />
               <div className="actions">
                 <button className="secondary" onClick={cancelEdit}>
                   Отмена

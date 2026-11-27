@@ -55,7 +55,6 @@ const RESTORE_LABELS: Record<string, string> = {
 export function DataSection({ notify }: { notify: (text: string) => void }) {
   const [exporting, setExporting] = useState(false);
   const [backupPassword, setBackupPassword] = useState("");
-  const [includePrivate, setIncludePrivate] = useState(false);
   const [epubBusy, setEpubBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState<string | null>(null);
   const [pdfPeriod, setPdfPeriod] = useState<PdfPeriod>("365");
@@ -67,7 +66,7 @@ export function DataSection({ notify }: { notify: (text: string) => void }) {
     if (pdfBusy) return;
     setPdfBusy("Рисую страницы...");
     try {
-      const { bytes, count, pages } = await buildDiaryPdf(includePrivate, pdfPeriod, (n) => setPdfBusy(`Готово страниц: ${n}`));
+      const { bytes, count, pages } = await buildDiaryPdf(pdfPeriod, (n) => setPdfBusy(`Готово страниц: ${n}`));
       const name = `дневник-${localDayKey()}.pdf`;
       if (isNative() && (await nativeShareBinary(name, bytes, "Мой дневник"))) {
         notify(`PDF готов: записей ${count}, страниц ${pages}.`);
@@ -92,7 +91,7 @@ export function DataSection({ notify }: { notify: (text: string) => void }) {
     if (epubBusy) return;
     setEpubBusy(true);
     try {
-      const { bytes, count } = await buildDiaryEpub(includePrivate);
+      const { bytes, count } = await buildDiaryEpub();
       const name = `дневник-${localDayKey()}.epub`;
       if (isNative() && (await nativeShareBinary(name, bytes, "Мой дневник"))) {
         notify(`Книга готова: записей ${count}.`);
@@ -148,7 +147,7 @@ export function DataSection({ notify }: { notify: (text: string) => void }) {
       }
       const file = new File([bytes as BlobPart], `мои-данные-${localDayKey()}.json`, { type: "application/json" });
       if ((navigator as any).canShare?.({ files: [file] })) {
-        await (navigator as any).share({ files: [file], title: "Копия данных Навигатора Жизни" });
+        await (navigator as any).share({ files: [file], title: "Копия данных Ego" });
         markBackupDone();
       } else {
         downloadBytes(bytes, file.name);
@@ -274,10 +273,6 @@ export function DataSection({ notify }: { notify: (text: string) => void }) {
         <p className="small" style={{ marginBottom: 10 }}>
           Все записи одним файлом EPUB, по главам-месяцам. Откроется в любой читалке и годится для печати или архива.
         </p>
-        <label className="check-row">
-          <input type="checkbox" checked={includePrivate} onChange={(e) => setIncludePrivate(e.target.checked)} />
-          <span>Включить личные записи</span>
-        </label>
         <button className="secondary mt" style={{ width: "100%" }} onClick={exportEpub} disabled={epubBusy}>
           {epubBusy ? "Собираю книгу..." : "Сохранить дневник в EPUB"}
         </button>

@@ -15,7 +15,7 @@ export async function getUserTimezone(userId: string): Promise<string> {
 }
 
 export interface CreatedEntry {
-  entry: { id: string; content: string; isPrivate: boolean; createdAt: Date };
+  entry: { id: string; content: string; createdAt: Date };
   principles: Array<{ id: string; content: string }>;
   support: { resources: SupportResource[] } | null;
 }
@@ -23,10 +23,10 @@ export interface CreatedEntry {
 export async function createJournalEntry(
   userId: string,
   content: string,
-  opts: { private?: boolean; timezone?: string } = {}
+  opts: { timezone?: string } = {}
 ): Promise<CreatedEntry> {
   const entry = await prisma.journalEntry.create({
-    data: { userId, content, isPrivate: opts.private ?? false },
+    data: { userId, content },
   });
 
   // Запись о тяжёлом состоянии не превращается в «принципы» и «задачи»: человеку в такой момент
@@ -36,7 +36,7 @@ export async function createJournalEntry(
     ? { resources: supportResourcesForTimezone(opts.timezone ?? (await getUserTimezone(userId))) }
     : null;
 
-  const principleTexts = opts.private || crisis ? [] : await extractPrinciplesFromJournal(content);
+  const principleTexts = crisis ? [] : await extractPrinciplesFromJournal(content);
   const principles: Array<{ id: string; content: string }> = [];
   for (const p of principleTexts) {
     const item = await prisma.memoryItem.create({

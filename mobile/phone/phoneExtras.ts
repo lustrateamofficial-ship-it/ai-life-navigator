@@ -2,10 +2,11 @@
 // бюджет по категориям и время вечернего вопроса. Дописываются в файл копии отдельным разделом,
 // серверная часть о нём не знает и просто не трогает.
 import { readEvening, writeEvening, type EveningSettings } from "./evening";
-import { readLayout, writeLayout, normalizeLayout, type Layout } from "./homeLayout";
+import { readLayouts, writeLayouts, normalizeLayouts, type Layouts } from "./homeLayout";
 import { readDaily, writeDaily, normalizeDaily, readPlans, writePlans, type DailySettings } from "./daily";
 import { readStreakDays, mergeStreakDays, readSkips, mergeSkips } from "./streak";
 import { readStart, writeStart, normalizeStart, type WeightStart } from "./weightGoal";
+import { readCelebrate, writeCelebrate, normalizeCelebrate, type CelebrateSettings } from "./celebrate";
 import { readAppearance, writeAppearance, normalizeAppearance, type Appearance } from "./appearance";
 
 const BUDGET_KEY = "navigator:budget";
@@ -35,16 +36,17 @@ export interface PhoneExtras {
   budget: BudgetLimits;
   evening: EveningSettings;
   appearance: Appearance;
+  celebrate?: CelebrateSettings;
   daily: DailySettings;
   dayPlans: ReturnType<typeof readPlans>;
-  homeLayout: Layout;
+  homeLayout: Layouts;
   weightStart: WeightStart | null;
   streakDays?: string[];
   streakSkips?: string[];
 }
 
 export function collectExtras(): PhoneExtras {
-  return { budget: readBudget(), evening: readEvening(), appearance: readAppearance(), daily: readDaily(), dayPlans: readPlans(), homeLayout: readLayout(), weightStart: readStart(), streakDays: readStreakDays(), streakSkips: readSkips() };
+  return { budget: readBudget(), evening: readEvening(), appearance: readAppearance(), celebrate: readCelebrate(), daily: readDaily(), dayPlans: readPlans(), homeLayout: readLayouts(), weightStart: readStart(), streakDays: readStreakDays(), streakSkips: readSkips() };
 }
 
 export function applyExtras(raw: any) {
@@ -57,8 +59,9 @@ export function applyExtras(raw: any) {
   const e = raw.evening;
   if (e && typeof e.enabled === "boolean" && typeof e.time === "string" && /^\d{2}:\d{2}$/.test(e.time)) writeEvening(e);
   if (raw.appearance && typeof raw.appearance === "object") writeAppearance(normalizeAppearance(raw.appearance));
+  if (raw.celebrate && typeof raw.celebrate === "object") writeCelebrate(normalizeCelebrate(raw.celebrate));
   if (raw.daily && typeof raw.daily === "object") writeDaily(normalizeDaily(raw.daily));
-  if (raw.homeLayout && typeof raw.homeLayout === "object") writeLayout(normalizeLayout(raw.homeLayout));
+  if (raw.homeLayout && typeof raw.homeLayout === "object") writeLayouts(normalizeLayouts(raw.homeLayout));
   if (raw.weightStart) { const w = normalizeStart(raw.weightStart); if (w && !readStart()) writeStart(w); }
   if (Array.isArray(raw.streakDays)) mergeStreakDays(raw.streakDays);
   if (Array.isArray(raw.streakSkips)) mergeSkips(raw.streakSkips);

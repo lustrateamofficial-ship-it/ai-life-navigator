@@ -35,7 +35,7 @@ if (!xml.includes("QuickNoteActivity")) {
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".QuickNoteWidget" android:exported="true" android:label="Навигатор: быстрая запись">
+        <receiver android:name=".QuickNoteWidget" android:exported="true" android:label="Ego: быстрая запись">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -66,6 +66,16 @@ fs.writeFileSync(
   path.join(resDir, "drawable/widget_bg.xml"),
   `<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">\n    <solid android:color="#E61F2A3A" />\n    <corners android:radius="20dp" />\n</shape>\n`
 );
+
+// Название под значком на рабочем столе телефона: «Ego» (берётся из package.json, поле displayName, иначе «Ego»).
+const stringsPath = path.join(resDir, "values/strings.xml");
+if (fs.existsSync(stringsPath)) {
+  const label = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf8")).displayName || "Ego";
+  let strings = fs.readFileSync(stringsPath, "utf8");
+  strings = strings.replace(/(<string name="(?:app_name|title_activity_main)">)[^<]*(<\/string>)/g, `$1${label}$2`);
+  fs.writeFileSync(stringsPath, strings);
+  console.log(`Android: название под значком «${label}»`);
+}
 
 // Свой плагин установки обновлений и главный экран, который его регистрирует.
 const cfg = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../capacitor.config.json"), "utf8"));

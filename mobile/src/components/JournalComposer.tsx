@@ -66,7 +66,6 @@ export function JournalComposer({ onSaved, placeholder, draft, onDraftUsed }: { 
     area.current?.focus();
   }, [draft]);
   const [saving, setSaving] = useState(false);
-  const [privateEntry, setPrivateEntry] = useState(false);
   const [review, setReview] = useState<{ entryId: string; proposals: Proposals } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
@@ -99,7 +98,7 @@ export function JournalComposer({ onSaved, placeholder, draft, onDraftUsed }: { 
     setNote(null);
     setSupport(null);
     try {
-      const entry = await api.post<{ id: string; support: SupportInfo | null }>("/journal", { content: text, private: privateEntry });
+      const entry = await api.post<{ id: string; support: SupportInfo | null }>("/journal", { content: text });
       hapticNotification("success");
       toast("Запись сохранена");
       setText("");
@@ -113,10 +112,10 @@ export function JournalComposer({ onSaved, placeholder, draft, onDraftUsed }: { 
 
       // Запись уже сохранена. Разбор на задачи/траты — необязательное дополнение: если он
       // не получился, запись остаётся, а пользователь просто не видит предложений.
-      if (!privateEntry && typeof navigator !== "undefined" && navigator.onLine === false) {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
         queueAnalysis(entry.id, text);
         setNote("Запись сохранена на телефоне. Без интернета ИИ ничего не разбирает: разберу, когда появится связь, и покажу предложения на главном экране.");
-      } else if (!privateEntry) {
+      } else {
         const failedBefore = aiFailureCount();
         try {
           const res = await api.post<{ aiAvailable: boolean; proposals: Proposals }>(`/journal/${entry.id}/analyze`);
@@ -188,14 +187,6 @@ export function JournalComposer({ onSaved, placeholder, draft, onDraftUsed }: { 
           onChange={(e) => setText(e.target.value)}
         />
         <div className="composer-bar">
-          <label className={`private-toggle ${privateEntry ? "on" : ""}`}>
-            <input type="checkbox" checked={privateEntry} onChange={(e) => setPrivateEntry(e.target.checked)} />
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="5" y="11" width="14" height="9" rx="2" />
-              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-            </svg>
-            {privateEntry ? "ИИ не увидит" : "Личная запись"}
-          </label>
           {voiceSupported() && (
             <button type="button" className="mic-btn" onClick={dictate} disabled={listening} aria-label={listening ? "Слушаю" : "Продиктовать"} aria-pressed={listening}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

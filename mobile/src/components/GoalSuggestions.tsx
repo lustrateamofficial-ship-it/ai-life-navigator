@@ -49,7 +49,7 @@ export function GoalSuggestions({ onCreated }: { onCreated: () => void }) {
     <div className="card">
       <div className="card-title">Цели из дневника</div>
       <p style={{ marginBottom: 8, fontSize: 13 }}>
-        Темы, о которых ты сам писал в дневнике. Личные записи не используются.
+        Темы, о которых ты сам писал в дневнике.
       </p>
       <button className="secondary" style={{ width: "100%" }} onClick={load} disabled={loading}>
         {loading ? "Читаю..." : "Подсказать из записей"}

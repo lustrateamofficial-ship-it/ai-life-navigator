@@ -34,7 +34,7 @@ export function Settings() {
         <DaySection notify={setNotice} />
       </GroupFold>
 
-      <GroupFold id="home" title="Плитки главного экрана" hint="Что показывать и в каком порядке">
+      <GroupFold id="home" title="Плитки экранов" hint="Что показывать и в каком порядке">
         <HomeSection />
       </GroupFold>
 

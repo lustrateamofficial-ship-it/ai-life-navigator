@@ -53,7 +53,7 @@ export function installErrorLog() {
 
 export function buildReport(extra: Record<string, string | number>): string {
   const lines = [
-    "Отчёт о проблеме. Навигатор Жизни",
+    "Отчёт о проблеме. Ego",
     `Сборка: ${typeof __APP_BUILD__ === "undefined" ? "?" : __APP_BUILD__}`,
     `Система: ${short(navigator.userAgent, 200)}`,
     `Время: ${new Date().toISOString()}`,

@@ -2,14 +2,17 @@ import { useState } from "react";
 import { api } from "../../api/client";
 import { clearErrors, buildReport, readErrors } from "../../../phone/errorLog";
 import { hapticsOn, setHaptics } from "../../../phone/feedback";
-import { writeAppearance, type ThemeMode } from "../../../phone/appearance";
+import { writeAppearance, type HeaderStyle, type ThemeMode } from "../../../phone/appearance";
 import { useAppearance } from "../../useAppearance";
 import { QuickNoteCard } from "../../components/QuickAndBackupCards";
 import { UpdateCard } from "../../components/UpdateCard";
 import { isNative, nativeShareText } from "../../../phone/native";
+import { readCelebrate, writeCelebrate, showCelebration } from "../../../phone/celebrate";
 
 // Вид, отклик, быстрая запись, обновления и отчёт о проблеме.
 export function AppSection({ notify }: { notify: (text: string) => void }) {
+  const [cel, setCel] = useState(readCelebrate);
+  const writeAndGet = (s: ReturnType<typeof readCelebrate>) => (writeCelebrate(s), s);
   const [reportText, setReportText] = useState<string | null>(null);
   const appearance = useAppearance();
   const [haptics, setHapticsState] = useState(hapticsOn());
@@ -73,11 +76,44 @@ export function AppSection({ notify }: { notify: (text: string) => void }) {
             </div>
           </div>
         )}
+        <div className="small" style={{ margin: "14px 0 6px" }}>Шапка экранов</div>
+        <div className="header-picks" role="radiogroup" aria-label="Шапка экранов">
+          {([
+            ["center", "По центру", "Крупный заголовок по центру"],
+            ["plate", "Плашка", "Заголовок на цветной плашке"],
+            ["bar", "Строка", "Тонкая строка сверху"],
+          ] as Array<[HeaderStyle, string, string]>).map(([id, name, hint]) => (
+            <button key={id} role="radio" aria-checked={appearance.header === id} className={`header-pick ${appearance.header === id ? "on" : ""}`} onClick={() => writeAppearance({ ...appearance, header: id })}>
+              <span className={`hp-demo hp-${id}`} aria-hidden="true">
+                <i />
+                <i />
+              </span>
+              <b>{name}</b>
+              <small>{hint}</small>
+            </button>
+          ))}
+        </div>
         <label className="check-row" style={{ marginTop: 12 }}>
           <input type="checkbox" checked={appearance.lite} onChange={(e) => writeAppearance({ ...appearance, lite: e.target.checked })} />
           <span>Облегчённый режим</span>
         </label>
         <p className="small">Меньше кнопок и карточек: на главном остаются запись, задачи и «Раньше». Всё остальное доступно через «Я».</p>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Праздник за все задачи</div>
+        <label className="check-row">
+          <input type="checkbox" checked={cel.on} onChange={(e) => setCel(writeAndGet({ ...cel, on: e.target.checked }))} />
+          <span>Праздновать, когда выполнены все задачи на сегодня</span>
+        </label>
+        <label className="check-row">
+          <input type="checkbox" checked={cel.sound} disabled={!cel.on} onChange={(e) => setCel(writeAndGet({ ...cel, sound: e.target.checked }))} />
+          <span>С музыкой</span>
+        </label>
+        <p className="small">Картинка, музыка и каскад карт, как при победе в косынке. Один раз в день.</p>
+        <button className="secondary" style={{ width: "100%", marginTop: 8 }} onClick={showCelebration}>
+          Посмотреть
+        </button>
       </div>
 
       <QuickNoteCard />

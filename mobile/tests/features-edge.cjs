@@ -47,9 +47,9 @@ print(len(ids), z.read("OEBPS/ch001.xhtml").decode().count("<p>"))
   const t1 = Date.now(); path = await epub("big"); const ms = Date.now() - t1;
   try { ok(`5000 записей: корректная книга (глав/абзацев: ${check(path)}), ${ms} мс, ${(fs.statSync(path).size / 1024) | 0} КБ`, ms < 8000); } catch (e) { ok("5000 записей: " + String(e.message).slice(-300), false); }
   const raw = fs.readFileSync(path).toString("latin1");
-  ok("личная запись по умолчанию не попала", !Buffer.from(fs.readFileSync(path)).includes(Buffer.from("ЗЕБРА")));
+  ok("в книгу попали все записи, в том числе помеченные раньше личными", Buffer.from(fs.readFileSync(path)).includes(Buffer.from("ЗЕБРА")));
   ok("текст <b> экранирован", Buffer.from(fs.readFileSync(path)).includes(Buffer.from("&lt;b&gt;")));
-  await p.locator("label.check-row:has-text('Включить личные записи') input").check();
+  ok("галочки «Включить личные записи» нет", (await p.locator("label.check-row:has-text('личные записи')").count()) === 0);
   path = await epub("with-private");
   ok("с галочкой личная запись попала", Buffer.from(fs.readFileSync(path)).includes(Buffer.from("ЗЕБРА")));
   try { check(path); ok("с личными: корректная книга", true); } catch (e) { ok("с личными: " + String(e.message).slice(-200), false); }

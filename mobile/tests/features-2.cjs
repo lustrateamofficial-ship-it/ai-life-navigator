@@ -59,7 +59,7 @@ const fs = require("fs");
 
   // 3. «В задачи»
   const priv = await p.locator(".card", { hasText: "Секретная личная запись" }).locator("button:has-text('В задачи')").count();
-  ok("у личной записи кнопки «В задачи» нет", priv === 0);
+  ok("личных записей больше нет: у каждой записи кнопка «В задачи»", priv === 1);
   await p.locator(".card", { hasText: "позвонить врачу завтра" }).locator("button:has-text('В задачи')").click(); await p.waitForTimeout(900);
   ok("показано предложение задачи", (await p.innerText("body")).includes("Задача: Позвонить врачу"));
   const before = await p.evaluate(async () => (await window.__api("GET", "/tasks")).body.length ?? (await window.__api("GET", "/tasks")).body.tasks?.length);

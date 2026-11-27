@@ -30,3 +30,7 @@ mobile/shim/zustand.ts
 (Остальное из shim переехало в mobile/phone.)
 
 Старые остатки сервера и Telegram, если они ещё есть в репозитории: папка frontend/, файлы docker-compose.yml, Caddyfile, update.sh, .env.example, backend/Dockerfile, backend/entrypoint.sh.
+
+Добавлено в 1.33.0:
+mobile/src/components/HomeCustomize.tsx
+(в 1.33.1 удалять ничего нового не нужно)

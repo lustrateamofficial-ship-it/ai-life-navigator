@@ -1,10 +1,13 @@
 import { toast } from "../../phone/feedback";
 import { SwipeRow } from "../components/SwipeRow";
+import { AutoTextarea } from "../components/AutoTextarea";
+import { Reminders } from "./Reminders";
 import { confirmDelete } from "../utils/format";
-import { IconClose, IconEdit } from "../components/Icons";
+import { IconBell, IconClose, IconEdit, IconUndo } from "../components/Icons";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { hapticImpact, hapticNotification } from "../platform/sdk";
+import { celebrateIfDayDone } from "../../phone/celebrate";
 
 interface Task {
   id: string;
@@ -13,6 +16,9 @@ interface Task {
   priority: string;
   deadline?: string | null;
   recurrence?: string | null;
+  completedAt?: string | null;
+  remindAt?: string | null;
+  remindActive?: boolean;
 }
 
 const RANGES = [
@@ -23,11 +29,57 @@ const RANGES = [
   { key: "done", label: "Выполненные" },
 ];
 
+const REPEAT_LABEL: Record<string, string> = { daily: "каждый день", weekdays: "по будням", weekends: "по выходным", weekly: "каждую неделю", monthly: "каждый месяц" };
+
+// Срок хранится как полдень выбранного дня по UTC: так задача попадает в нужный день при любом часовом поясе.
+const dateKey = (iso?: string | null) => (iso ? new Date(iso).toISOString().slice(0, 10) : "");
+const deadlineOf = (key: string) => (key ? `${key}T12:00:00.000Z` : null);
+const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
+const fmtRemind = (iso: string) => new Date(iso).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const fmtDone = (iso: string) => new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+
+// Значение для <input type="datetime-local">: то же местное время, что сохранено.
+function toLocalInput(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+const remindIso = (local: string) => (local ? new Date(local).toISOString() : null);
+
+// Поля срока, напоминания и повтора: одинаковые при создании и при правке задачи.
+function TaskFields({ date, onDate, remind, onRemind, repeat, onRepeat, idPrefix }: { date: string; onDate: (v: string) => void; remind: string; onRemind: (v: string) => void; repeat: string; onRepeat: (v: string) => void; idPrefix: string }) {
+  return (
+    <div className="task-fields">
+      <label htmlFor={`${idPrefix}-date`}>
+        <span className="small">Срок</span>
+        <input id={`${idPrefix}-date`} type="date" value={date} onChange={(e) => onDate(e.target.value)} />
+      </label>
+      <label htmlFor={`${idPrefix}-remind`}>
+        <span className="small">Напомнить</span>
+        <input id={`${idPrefix}-remind`} type="datetime-local" value={remind} onChange={(e) => onRemind(e.target.value)} />
+      </label>
+      <label htmlFor={`${idPrefix}-repeat`}>
+        <span className="small">Повтор</span>
+        <select id={`${idPrefix}-repeat`} value={repeat} onChange={(e) => onRepeat(e.target.value)}>
+          <option value="">Не повторять</option>
+          <option value="daily">Каждый день</option>
+          <option value="weekdays">По будням</option>
+          <option value="weekends">По выходным</option>
+          <option value="weekly">Каждую неделю</option>
+          <option value="monthly">Каждый месяц</option>
+        </select>
+      </label>
+    </div>
+  );
+}
+
 export function Tasks({ embedded = false, autoAdd = false }: { embedded?: boolean; autoAdd?: boolean } = {}) {
   const [range, setRange] = useState("today");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [quickInput, setQuickInput] = useState("");
   const [quickDate, setQuickDate] = useState("");
+  const [quickRemind, setQuickRemind] = useState("");
   const [quickRepeat, setQuickRepeat] = useState("");
   const [adding, setAdding] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -64,23 +116,27 @@ export function Tasks({ embedded = false, autoAdd = false }: { embedded?: boolea
       hapticImpact("light");
       toast(task.status === "done" ? "Задача возвращена в работу" : "Задача выполнена");
       await load();
+      if (task.status !== "done") void celebrateIfDayDone();
     } finally {
       setTogglingId(null);
     }
   }
 
-  // Раздел 41: "Лучше: «Завтра сделать страницу проекта на час»" — без ИИ-ключа
-  // просто создаём задачу с заголовком как есть; с ИИ-ключом бэкенд может парсить через /ai.
   async function quickAdd() {
     if (!quickInput.trim() || adding) return;
     setAdding(true);
     try {
-      // Срок хранится как полдень выбранного дня: так задача попадает в нужный день при любом часовом поясе.
-      await api.post("/tasks", { title: quickInput, ...(quickDate ? { deadline: `${quickDate}T12:00:00.000Z` } : {}), ...(quickRepeat ? { recurrence: quickRepeat } : {}) });
+      await api.post("/tasks", {
+        title: quickInput,
+        ...(quickDate ? { deadline: deadlineOf(quickDate) } : {}),
+        ...(quickRemind ? { remindAt: remindIso(quickRemind) } : {}),
+        ...(quickRepeat ? { recurrence: quickRepeat } : {}),
+      });
       hapticNotification("success");
-      toast("Задача добавлена");
+      toast(quickRemind ? "Задача добавлена, напомню вовремя" : "Задача добавлена");
       setQuickInput("");
       setQuickDate("");
+      setQuickRemind("");
       setQuickRepeat("");
       await load();
     } finally {
@@ -88,19 +144,36 @@ export function Tasks({ embedded = false, autoAdd = false }: { embedded?: boolea
     }
   }
 
+  // Правка задачи: название (поле растёт по тексту, видно всё), срок, напоминание и повтор.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editRemind, setEditRemind] = useState("");
+  const [editRepeat, setEditRepeat] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  function startEdit(task: Task) {
+    setEditingId(task.id);
+    setEditText(task.title);
+    setEditDate(dateKey(task.deadline));
+    setEditRemind(toLocalInput(task.remindAt));
+    setEditRepeat(task.recurrence ?? "");
+  }
 
   async function saveEdit(id: string) {
     const title = editText.trim();
-    if (!title) return;
+    if (!title || saving) return;
+    setSaving(true);
     try {
-      await api.put(`/tasks/${id}`, { title });
+      await api.put(`/tasks/${id}`, { title, deadline: deadlineOf(editDate), remindAt: remindIso(editRemind), recurrence: editRepeat || null });
       hapticNotification("success");
+      toast("Изменения сохранены");
       setEditingId(null);
       await load();
     } catch {
-      /* название не сохранилось: окно правки остаётся открытым, можно повторить */
+      /* не сохранилось: окно правки остаётся открытым, можно повторить */
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -116,10 +189,10 @@ export function Tasks({ embedded = false, autoAdd = false }: { embedded?: boolea
   }
 
   const EMPTY: Record<string, string> = {
-    today: "На сегодня задач нет. Хороший повод выдохнуть или добавить что-то ниже.",
+    today: "На сегодня задач нет. Хороший повод выдохнуть или добавить что-то выше.",
     tomorrow: "На завтра пока ничего.",
     week: "На эту неделю задач нет.",
-    all: "Задач нет. Добавь первую ниже.",
+    all: "Задач нет. Добавь первую выше.",
     done: "Выполненных задач пока нет.",
   };
 
@@ -145,21 +218,7 @@ export function Tasks({ embedded = false, autoAdd = false }: { embedded?: boolea
             {adding ? "..." : "Добавить"}
           </button>
         </div>
-        <label className="small" htmlFor="task-date" style={{ display: "block", margin: "10px 0 6px" }}>
-          Срок (необязательно)
-        </label>
-        <input id="task-date" type="date" value={quickDate} onChange={(e) => setQuickDate(e.target.value)} />
-        <label className="small" htmlFor="task-repeat" style={{ display: "block", margin: "10px 0 6px" }}>
-          Повтор
-        </label>
-        <select id="task-repeat" value={quickRepeat} onChange={(e) => setQuickRepeat(e.target.value)}>
-          <option value="">Не повторять</option>
-          <option value="daily">Каждый день</option>
-          <option value="weekdays">По будням</option>
-          <option value="weekends">По выходным</option>
-          <option value="weekly">Каждую неделю</option>
-          <option value="monthly">Каждый месяц</option>
-        </select>
+        <TaskFields idPrefix="task" date={quickDate} onDate={setQuickDate} remind={quickRemind} onRemind={setQuickRemind} repeat={quickRepeat} onRepeat={setQuickRepeat} />
       </div>
 
       <div className="chips" role="group" aria-label="Период">
@@ -172,75 +231,83 @@ export function Tasks({ embedded = false, autoAdd = false }: { embedded?: boolea
 
       <div className="card">
         {tasks.length === 0 && <p className="empty">{EMPTY[range]}</p>}
-        {tasks.map((task) => (
-          <SwipeRow
-            key={task.id}
-            disabled={editingId === task.id || togglingId === task.id}
-            rightLabel={task.status === "done" ? "Вернуть" : "Выполнено"}
-            leftLabel="Удалить"
-            onRight={() => toggle(task)}
-            onLeft={() => removeTask(task.id)}
-            onUsed={markSwipeUsed}
-          >
-            <button
-              className={task.status === "done" ? "checkbox done" : "checkbox"}
-              onClick={() => toggle(task)}
+        {tasks.map((task) =>
+          editingId === task.id ? (
+            <div className="task-edit" key={task.id}>
+              <AutoTextarea
+                aria-label="Название задачи"
+                minRows={2}
+                autoFocus
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setEditingId(null)}
+              />
+              <TaskFields idPrefix={`e-${task.id}`} date={editDate} onDate={setEditDate} remind={editRemind} onRemind={setEditRemind} repeat={editRepeat} onRepeat={setEditRepeat} />
+              <div className="actions">
+                <button className="secondary" onClick={() => setEditingId(null)}>
+                  Отмена
+                </button>
+                <button className="primary" onClick={() => saveEdit(task.id)} disabled={saving || !editText.trim()}>
+                  {saving ? "..." : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <SwipeRow
+              key={task.id}
               disabled={togglingId === task.id}
-              aria-label={task.status === "done" ? "вернуть в работу" : "отметить выполненной"}
-            />
-            {editingId === task.id ? (
-              <>
-                <input
-                  aria-label="Название задачи"
-                  value={editText}
-                  autoFocus
-                  onChange={(e) => setEditText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void saveEdit(task.id);
-                    if (e.key === "Escape") setEditingId(null);
-                  }}
-                  style={{ flex: 1, minWidth: 0 }}
-                />
-                <button className="primary" style={{ width: "auto", padding: "0 14px" }} onClick={() => saveEdit(task.id)}>
-                  Готово
-                </button>
-              </>
-            ) : (
-              <>
-                <span style={{ flex: 1 }}>
-                  {task.title}
-                  {task.recurrence && (
-                    <span className="small" style={{ display: "block" }}>
-                      повторяется: {{ daily: "каждый день", weekdays: "по будням", weekends: "по выходным", weekly: "каждую неделю", monthly: "каждый месяц" }[task.recurrence] ?? task.recurrence}
-                    </span>
-                  )}
-                  {task.deadline && (
-                    <span className="small" style={{ display: "block" }}>
-                      до {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" })}
-                    </span>
-                  )}
-                </span>
-                <button
-                  className="icon-btn"
-                  aria-label="изменить"
-                  onClick={() => {
-                    setEditingId(task.id);
-                    setEditText(task.title);
-                  }}
-                >
-                  <IconEdit />
-                </button>
-                <button className="icon-btn" aria-label="удалить" onClick={() => removeTask(task.id)}>
-                  <IconClose />
-                </button>
-              </>
-            )}
-          </SwipeRow>
-        ))}
-        {tasks.length > 0 && !swipeUsed && (
-          <p className="small swipe-hint">Смахни задачу вправо, чтобы выполнить, или влево, чтобы удалить.</p>
+              rightLabel={task.status === "done" ? "Вернуть" : "Выполнено"}
+              leftLabel="Удалить"
+              onRight={() => toggle(task)}
+              onLeft={() => removeTask(task.id)}
+              onUsed={markSwipeUsed}
+            >
+              {task.status === "done" ? (
+                <>
+                  <span className="done-mark" aria-hidden="true" />
+                  <span className="task-main done-text">
+                    <span className="task-title">{task.title}</span>
+                    {task.completedAt && <span className="small">Выполнено {fmtDone(task.completedAt)}</span>}
+                  </span>
+                  <button className="undo-btn" onClick={() => toggle(task)} disabled={togglingId === task.id} aria-label={`Вернуть в работу: ${task.title}`}>
+                    <IconUndo />
+                    Вернуть
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="checkbox" onClick={() => toggle(task)} disabled={togglingId === task.id} aria-label="отметить выполненной" />
+                  <span className="task-main">
+                    <span className="task-title">{task.title}</span>
+                    {(task.deadline || task.remindAt || task.recurrence) && (
+                      <span className="task-meta">
+                        {task.deadline && <span className="meta-chip">до {fmtDay(task.deadline)}</span>}
+                        {task.remindAt && (
+                          <span className={`meta-chip bell ${task.remindActive ? "" : "past"}`}>
+                            <IconBell />
+                            {fmtRemind(task.remindAt)}
+                          </span>
+                        )}
+                        {task.recurrence && <span className="meta-chip">{REPEAT_LABEL[task.recurrence] ?? task.recurrence}</span>}
+                      </span>
+                    )}
+                  </span>
+                  <button className="icon-btn" aria-label="изменить" onClick={() => startEdit(task)}>
+                    <IconEdit />
+                  </button>
+                  <button className="icon-btn" aria-label="удалить" onClick={() => removeTask(task.id)}>
+                    <IconClose />
+                  </button>
+                </>
+              )}
+            </SwipeRow>
+          )
         )}
+        {tasks.length > 0 && !swipeUsed && <p className="small swipe-hint">Смахни задачу вправо, чтобы выполнить, или влево, чтобы удалить.</p>}
       </div>
+
+      {/* Напоминания, созданные раньше отдельно от задач: остаются здесь, пока их не удалят. Новые создаются из задачи («Напомнить»). */}
+      <Reminders embedded legacyOnly />
     </div>
   );
 }

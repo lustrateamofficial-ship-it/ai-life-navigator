@@ -73,7 +73,7 @@ const LOOKBACKS: Array<{ days: number; label: string }> = [
 
 export async function findEarlier(userId: string, now: Date, tz: string) {
   const entries = await prisma.journalEntry.findMany({
-    where: { userId, isPrivate: false, createdAt: { lt: new Date(now.getTime() - 6 * DAY) } },
+    where: { userId, createdAt: { lt: new Date(now.getTime() - 6 * DAY) } },
     orderBy: { createdAt: "desc" },
     select: { id: true, content: true, createdAt: true },
   });

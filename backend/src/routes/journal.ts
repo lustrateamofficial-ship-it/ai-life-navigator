@@ -57,14 +57,11 @@ journalRouter.get("/", async (req, res) => {
 // POST /journal — новая запись. Если AI настроен, из текста извлекаются устойчивые
 // принципы ("категоричность — признак слабого ума") и сохраняются отдельно как
 // MemoryItem(type=principle) — они дальше ВСЕГДА попадают в контекст AI (см. contextBuilder).
-// private: true — личная запись, которую нельзя отправлять во внешние AI-сервисы.
 journalRouter.post("/", async (req, res) => {
-  const parsed = z.object({ content: z.string().trim().min(1).max(20000), private: z.boolean().optional() }).safeParse(req.body);
+  const parsed = z.object({ content: z.string().trim().min(1).max(20000) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const { entry, principles, support } = await createJournalEntry(req.userId!, parsed.data.content, {
-    private: parsed.data.private,
-  });
+  const { entry, principles, support } = await createJournalEntry(req.userId!, parsed.data.content);
   res.status(201).json({ ...entry, extractedPrinciples: principles, support });
 });
 
@@ -104,8 +101,8 @@ journalRouter.post("/:id/analyze", async (req, res) => {
   const entry = await prisma.journalEntry.findFirst({ where: { id: req.params.id, userId: req.userId! } });
   if (!entry) return res.status(404).json({ error: "Not found" });
 
-  // Условия «не отправлять в AI» проверяются здесь, на сервере, а не только в интерфейсе.
-  if (entry.isPrivate || detectCrisis(entry.content)) {
+  // Записи о тяжёлом состоянии в ИИ не отправляются: это проверяется здесь, на сервере, а не только в интерфейсе.
+  if (detectCrisis(entry.content)) {
     return res.json({ aiAvailable: isAnyAiConfigured(), proposals: { ...EMPTY_PROPOSALS } });
   }
 

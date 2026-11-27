@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { usePath } from "react-router-dom";
 import { AddSheet } from "./AddSheet";
 
 // Раздел 6: главная нижняя навигация — ровно 5 пунктов, не выводить 10-12 разделов на главный экран.
@@ -41,21 +41,34 @@ const ICONS: Record<string, JSX.Element> = {
   ),
 };
 
+// own: экраны, которые считаются частью раздела (подсвечивается тот раздел, откуда человек пришёл).
 const ITEMS = [
-  { to: "/", icon: "home", label: "Сегодня" },
-  { to: "/journal", icon: "journal", label: "Дневник" },
-  { to: "/plans", icon: "tasks", label: "Планы" },
-  { to: "/me", icon: "me", label: "Я" },
+  { to: "/", icon: "home", label: "Сегодня", own: ["/", "/week-review"] },
+  { to: "/journal", icon: "journal", label: "Дневник", own: ["/journal"] },
+  { to: "/plans", icon: "tasks", label: "Планы", own: ["/plans", "/plan-tomorrow"] },
+  { to: "/me", icon: "me", label: "Я", own: ["/me", "/habits", "/finance", "/ideas", "/memory", "/mission", "/analytics", "/trash", "/settings", "/portrait"] },
 ];
 
 function Item({ item }: { item: (typeof ITEMS)[number] }) {
+  const path = usePath();
+  // Неизвестный адрес показывает «Сегодня», поэтому и подсвечивается он.
+  const known = ITEMS.some((i) => i.own.includes(path));
+  const active = item.own.includes(path) || (item.to === "/" && !known);
   return (
-    <NavLink to={item.to} end={item.to === "/"} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
+    <a
+      href={`#${item.to}`}
+      onClick={(e) => {
+        e.preventDefault();
+        window.location.hash = item.to;
+      }}
+      className={`nav-item ${active ? "active" : ""}`}
+      aria-current={active ? "page" : undefined}
+    >
       <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {ICONS[item.icon]}
       </svg>
       <span>{item.label}</span>
-    </NavLink>
+    </a>
   );
 }
 

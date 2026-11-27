@@ -9,6 +9,7 @@ interface TaskRow {
   title: string;
   status: string;
   priority: string;
+  deadline?: string | null;
 }
 
 // Вечерний экран: выбрать задачи и записать расписание на завтра. Утром из этого собирается сводка.
@@ -24,9 +25,14 @@ export function PlanTomorrow() {
   const [weather, setWeather] = useState(weatherFor(tomorrow));
   const [busy, setBusy] = useState(false);
 
+  const tomorrowKey = dayKey(tomorrow);
+  // Задачи, которым срок уже поставлен на завтра (например, в «Планах»): они в плане сами, снимать отметку не нужно.
+  const dueTomorrow = (t: TaskRow) => !!t.deadline && new Date(t.deadline).toISOString().slice(0, 10) === tomorrowKey;
+
   async function loadTasks() {
-    const list = await api.get<TaskRow[]>("/tasks");
-    setTasks(list.filter((t) => t.status !== "done" && t.status !== "cancelled"));
+    const list = (await api.get<TaskRow[]>("/tasks")).filter((t) => t.status !== "done" && t.status !== "cancelled");
+    // Сначала задачи на завтра, потом остальные.
+    setTasks([...list.filter(dueTomorrow), ...list.filter((t) => !dueTomorrow(t))]);
   }
   async function loadSchedule() {
     setSchedule(await scheduleFor(tomorrow));
@@ -51,7 +57,8 @@ export function PlanTomorrow() {
     if (!title || busy) return;
     setBusy(true);
     try {
-      const t = await api.post<TaskRow>("/tasks", { title });
+      // Срок — завтра: иначе задача без даты попала бы в «Сегодня».
+      const t = await api.post<TaskRow>("/tasks", { title, deadline: `${tomorrowKey}T12:00:00.000Z` });
       setNewTask("");
       await loadTasks();
       const next = [...picked, t.id];
@@ -92,12 +99,15 @@ export function PlanTomorrow() {
 
       <div className="card">
         <div className="card-title">Что нужно сделать</div>
-        <p className="small" style={{ marginBottom: 8 }}>Отметь главное. Утром в сводку попадут три первые отмеченные.</p>
+        <p className="small" style={{ marginBottom: 8 }}>Отметь главное. Задачи со сроком на завтра уже в плане. Утром в сводку попадут три первые.</p>
         {tasks.length === 0 && <p className="empty">Открытых задач нет. Добавь ниже.</p>}
         {tasks.map((t) => (
           <label className="check-row" key={t.id}>
-            <input type="checkbox" checked={picked.includes(t.id)} onChange={() => togglePick(t.id)} />
-            <span>{t.title}</span>
+            <input type="checkbox" checked={picked.includes(t.id) || dueTomorrow(t)} disabled={dueTomorrow(t)} onChange={() => togglePick(t.id)} />
+            <span>
+              {t.title}
+              {dueTomorrow(t) && <span className="tag">на завтра</span>}
+            </span>
           </label>
         ))}
         <div className="field-row mt">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { bestStreakFrom, isSkipped, readSkips, readStreakDays, skipsLeft, skipToday, streakEvent, streakFrom, unskipToday } from "../../phone/streak";
 import { dayKey } from "../../phone/daily";
+import { MAX_SKIPS_PER_WEEK } from "../../phone/streakCore";
 import { plural } from "./WeekDigest";
 
 const WEEKS = 5;
@@ -50,15 +51,33 @@ export function StreakCard() {
       </div>
       <p className="small" style={{ marginTop: 10 }}>День засчитывается, когда закрыты все задачи, запланированные на этот день.</p>
       {!doneToday && (
-        <div className="row" style={{ marginTop: 8, alignItems: "center", gap: 10 }}>
-          {skippedToday ? (
-            <button className="ghost" id="unskip-day" onClick={() => unskipToday()}>Отменить пропуск</button>
-          ) : (
-            <button className="ghost" id="skip-day" disabled={left <= 0} onClick={() => skipToday()}>Пропустить сегодня</button>
-          )}
-          <span className="small">
-            {skippedToday ? "Сегодня пропущен: серия сохранена." : left > 0 ? `Серия не прервётся. Осталось пропусков на неделе: ${left}.` : "Пропуски на этой неделе закончились."}
+        <div className={`skip-panel ${skippedToday ? "is-skipped" : ""}`}>
+          <span className="skip-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 5v14M16 5v14" />
+            </svg>
           </span>
+          <div className="skip-text">
+            <b>{skippedToday ? "Сегодня пропущен" : "Нужен выходной?"}</b>
+            <span>
+              {skippedToday ? "Серия сохранена." : left > 0 ? "Пропуск не прервёт серию." : "Пропуски на этой неделе закончились."}
+            </span>
+            <span className="skip-pips" aria-label={`Пропусков на неделе осталось: ${left} из ${MAX_SKIPS_PER_WEEK}`}>
+              {Array.from({ length: MAX_SKIPS_PER_WEEK }, (_, i) => (
+                <i key={i} className={i < left ? "on" : ""} />
+              ))}
+              <small>{left} из {MAX_SKIPS_PER_WEEK} на неделе</small>
+            </span>
+          </div>
+          {skippedToday ? (
+            <button className="skip-btn undo" id="unskip-day" onClick={() => unskipToday()}>
+              Отменить пропуск
+            </button>
+          ) : (
+            <button className="skip-btn" id="skip-day" disabled={left <= 0} onClick={() => skipToday()}>
+              Пропустить сегодня
+            </button>
+          )}
         </div>
       )}
     </div>

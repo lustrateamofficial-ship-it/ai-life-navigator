@@ -28,6 +28,11 @@ export function HashRouter({ children }: { children: ReactNode }) {
   return createElement(PathContext.Provider, { value: path }, createElement(QueryContext.Provider, { value: query }, children));
 }
 
+// Текущий путь без параметров: нижняя панель по нему понимает, какой раздел открыт, даже на вложенных экранах.
+export function usePath(): string {
+  return useContext(PathContext);
+}
+
 export function useNavigate() {
   return (to: string) => {
     window.location.hash = to;

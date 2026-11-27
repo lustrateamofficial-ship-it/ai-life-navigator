@@ -12,7 +12,7 @@ const { chromium } = require("playwright");
   await p.goto("http://localhost:8099/#/plans?tab=tasks"); await p.reload(); await p.waitForTimeout(800);
   // правка
   await p.getByLabel("изменить").first().click();
-  await p.getByLabel("Название задачи").fill("Новое название"); await p.getByRole("button", { name: "Готово" }).click(); await p.waitForTimeout(600);
+  await p.getByLabel("Название задачи").fill("Новое название"); await p.getByRole("button", { name: "Сохранить" }).click(); await p.waitForTimeout(600);
   console.log("переименована:", (await txt()).includes("Новое название"));
   // удаление: сначала отказ, потом согласие
   await p.getByLabel("удалить").first().click(); await p.waitForTimeout(300);

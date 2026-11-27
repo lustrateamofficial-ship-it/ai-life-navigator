@@ -35,7 +35,7 @@ export function DaySection({ notify }: { notify: (text: string) => void }) {
 
   async function pickEveningTime() {
     try {
-      const r = await api.get<{ entries: Array<{ createdAt: string; isPrivate?: boolean }> }>("/journal?limit=60");
+      const r = await api.get<{ entries: Array<{ createdAt: string }> }>("/journal?limit=60");
       const t = suggestEveningTime(r.entries.map((e) => e.createdAt));
       if (!t) return setEveningHint("Пока мало записей, чтобы подобрать время. Нужно хотя бы пять.");
       changeEvening({ ...evening, time: t });

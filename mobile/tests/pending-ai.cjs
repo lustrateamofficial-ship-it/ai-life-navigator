@@ -42,8 +42,8 @@ const { chromium } = require("playwright");
   // личные записи не попадают в ИИ и в очередь
   status = 429; await p.evaluate(() => { localStorage.removeItem("navigator:ai-health"); localStorage.setItem("navigator:ai-ready", "[]"); });
   await p.reload(); await p.waitForTimeout(800);
-  await p.check(".private-toggle input").catch(() => {}); await save("Личная запись не для ИИ");
+  ok("переключателя «личная запись» нет", (await p.locator(".private-toggle").count()) === 0); await save("Запись для ИИ");
   const q3 = await p.evaluate(() => JSON.parse(localStorage.getItem("navigator:ai-pending") || "[]"));
-  ok("личная запись в очередь не попала", q3.length === 0);
+  ok("запись при недоступном ИИ встала в очередь", q3.length === 1);
   console.log("ERRORS", errs); await b.close();
 })();

@@ -89,7 +89,7 @@ function toBlocks(entries: EpubEntry[]): Block[] {
     }
     const date = e.createdAt.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
     const time = e.createdAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-    out.push({ kind: "date", text: `${date}, ${time}${e.isPrivate ? " · личная" : ""}` });
+    out.push({ kind: "date", text: `${date}, ${time}` });
     for (const para of e.content.split(/\n+/)) if (para.trim()) out.push({ kind: "text", text: para.trim() });
   }
   return out;
@@ -226,13 +226,13 @@ export async function renderDiaryPdf(entries: EpubEntry[], onProgress?: (page: n
 
 export type PdfPeriod = "all" | "365" | "90";
 
-export async function buildDiaryPdf(includePrivate: boolean, period: PdfPeriod, onProgress?: (page: number) => void) {
+export async function buildDiaryPdf(period: PdfPeriod, onProgress?: (page: number) => void) {
   await ready();
-  const rows = (await prisma.journalEntry.findMany({ orderBy: { createdAt: "asc" } })) as Array<{ createdAt: Date | string; content: string; isPrivate?: boolean }>;
+  const rows = (await prisma.journalEntry.findMany({ orderBy: { createdAt: "asc" } })) as Array<{ createdAt: Date | string; content: string }>;
   const since = period === "all" ? 0 : Date.now() - Number(period) * 86_400_000;
   const entries = rows
-    .filter((r) => (includePrivate || !r.isPrivate) && new Date(r.createdAt).getTime() >= since)
-    .map((r) => ({ createdAt: new Date(r.createdAt), content: String(r.content ?? ""), isPrivate: !!r.isPrivate }));
+    .filter((r) => new Date(r.createdAt).getTime() >= since)
+    .map((r) => ({ createdAt: new Date(r.createdAt), content: String(r.content ?? "") }));
   const res = await renderDiaryPdf(entries, onProgress);
   return { ...res, count: entries.length };
 }

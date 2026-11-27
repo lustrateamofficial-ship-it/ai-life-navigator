@@ -127,7 +127,7 @@ export async function nativeShareText(fileName: string, text: string): Promise<b
   const share = plugin("Share");
   if (!fs || !share) return false;
   const written = await fs.writeFile({ path: fileName, data: text, directory: "CACHE", encoding: "utf8" });
-  await share.share({ title: "Копия данных Навигатора Жизни", url: written.uri, dialogTitle: "Куда сохранить копию" });
+  await share.share({ title: "Копия данных Ego", url: written.uri, dialogTitle: "Куда сохранить копию" });
   return true;
 }
 

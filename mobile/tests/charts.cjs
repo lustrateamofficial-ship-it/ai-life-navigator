@@ -31,7 +31,7 @@ const { chromium } = require("playwright");
     await window.__api("POST", "/finance/expenses", { amount: 30000, category: "Еда", date: d(1, 2) });
   });
   await p.goto("http://localhost:8099/#/me"); await p.reload(); await p.waitForTimeout(800);
-  await p.getByRole("button", { name: /Финансы/ }).click(); await p.waitForTimeout(600);
+  await p.goto("http://localhost:8099/#/finance"); await p.waitForTimeout(600);
   const label = await p.locator("svg[aria-label^='Доходы и расходы']").getAttribute("aria-label");
   ok("график по месяцам: суммы по месяцам верные", /окт 48\D?000 и 30\D?000/.test(label) && /ноя 50\D?000 и 20\D?000/.test(label));
   const cats = await p.locator(".cat-list li").allInnerTexts();
